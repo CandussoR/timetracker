@@ -36,6 +36,14 @@ DAY_MAX = '''SELECT date, MAX(sum_time)
             FROM timer_data
             GROUP BY date);'''
 
+AVG_TIME_DAY = '''SELECT time(AVG(strftime('%s', sum_time)), 'unixepoch')
+            FROM (
+            SELECT time(sum(strftime('%s', time_elapsed)), 'unixepoch') as sum_time
+            FROM timer_data
+            WHERE date LIKE '2022%'
+            GROUP BY date
+            );'''
+
 def timer_count(connexion, time_span):
     with connexion:
         if time_span == 'today':
@@ -65,3 +73,8 @@ def max_in_a_day(connexion):
     with connexion:
         max = connexion.execute(DAY_MAX).fetchone()
     return max
+
+def average_day(connexion):
+    with connexion:
+        avg = connexion.execute(AVG_TIME_DAY).fetchone()
+    return avg[0]

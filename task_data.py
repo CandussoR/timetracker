@@ -1,4 +1,5 @@
 import sqlite3
+from re import split
 
 CREATE_TASK_TABLE = '''
       CREATE TABLE IF NOT EXISTS tasks (
@@ -42,11 +43,15 @@ def create_tables(connexion):
         connexion.execute(CREATE_TIMER_TABLE)
         connexion.execute(CREATE_TASK_TABLE)
 
+def parse_input(task_input):
+    parsed = split('\W', task_input, 1)
+    return parsed[0], parsed[1]
+
 def check_existence(connexion, *task):
     with connexion:
         if len(task) == 2 :
             result = connexion.execute(CHECK_TUPLE_EXISTENCE, [*task]).fetchone()
-        else:
+        else :
             result = connexion.execute(CHECK_TASK_EXISTENCE, [*task]).fetchone()
     return result[0]
 
