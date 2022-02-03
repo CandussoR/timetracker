@@ -1,4 +1,4 @@
-TIME_PER_TASK_TODAY = '''SELECT t.task_name, time(sum(strftime('%s', time_elapsed)), 'unixepoch') as time
+TIME_PER_TASK_TODAY = '''SELECT t.task_name, time(sum(time_elapsed), 'unixepoch') as time
                    FROM timer_data td
                    JOIN tasks t ON t.id = td.task_id
                    WHERE date(date) = date('now')
@@ -7,7 +7,7 @@ TIME_PER_TASK_TODAY = '''SELECT t.task_name, time(sum(strftime('%s', time_elapse
 
 TODAY_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(date) = date('now');"
 
-TOTAL_TIME_TODAY = '''SELECT time(sum(strftime('%s', time_elapsed)), 'unixepoch') FROM timer_data
+TOTAL_TIME_TODAY = '''SELECT time(sum(time_elapsed), 'unixepoch') FROM timer_data
                       WHERE date(date) = date('now');'''
 
 WEEK_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(date) > date('now', 'weekday 0', '-7 days')"
@@ -15,7 +15,7 @@ WEEK_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(date) > date('now', 'we
 TOTAL_TIME_WEEK = '''
     SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, (totsec % 86400) / 3600) as total
     FROM (
-        SELECT sum(strftime('%s', time_ending)-strftime('%s',time_beginning)) as totsec
+        SELECT sum(time_elapsed) as totsec
         FROM timer_data
         WHERE date(date) > date('now', 'weekday 0', '-7 days')
         );'''
@@ -25,20 +25,20 @@ YEAR_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) =
 TOTAL_TIME_YEAR = '''
     SELECT printf("%02d:%02d:%02d:%02d", totsec / 86400, (totsec % 86400) / 3600, (totsec % 3600) / 60, (totsec % 86400) / 3600) as total
     FROM (
-        SELECT sum(strftime('%s', time_ending)-strftime('%s',time_beginning)) as totsec
+        SELECT sum(time_elapsed) as totsec
         FROM timer_data
         WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))
         );'''
 
 DAY_MAX = '''SELECT date, MAX(sum_time)
             FROM (
-            SELECT date, time(sum(strftime('%s', time_elapsed)), 'unixepoch') as sum_time
+            SELECT date, time(sum(time_elapsed), 'unixepoch') as sum_time
             FROM timer_data
             GROUP BY date);'''
 
-AVG_TIME_DAY = '''SELECT time(AVG(strftime('%s', sum_time)), 'unixepoch')
+AVG_TIME_DAY = '''SELECT time(AVG(sum_time), 'unixepoch')
             FROM (
-            SELECT time(sum(strftime('%s', time_elapsed)), 'unixepoch') as sum_time
+            SELECT sum(time_elapsed) as sum_time
             FROM timer_data
             WHERE date LIKE '2022%'
             GROUP BY date
