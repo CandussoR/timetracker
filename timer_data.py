@@ -18,7 +18,7 @@ def update_ending(connexion, time_ending):
 
 def add_elapsed_time(connexion):
     with connexion:
-        connexion.execute(ADD_TIME_DIFFERENCE, [time_elapsed])
+        connexion.execute(ADD_TIME_DIFFERENCE)
 
 def updating_row(connexion, time):
     update_ending(connexion, time)

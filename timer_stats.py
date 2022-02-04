@@ -44,6 +44,27 @@ AVG_TIME_DAY = '''SELECT time(AVG(sum_time), 'unixepoch')
             GROUP BY date
             );'''
 
+MAX_AND_CURRENT_STREAK ='''
+with cte AS (
+    SELECT task_name, SUM(COALESCE(flag, 1)) OVER (PARTITION BY task_name ORDER BY date) grp
+    FROM (
+        SELECT t.task_name, date,
+                date(date, '-1 day') <> lag(date) OVER (PARTITION BY t.task_name ORDER BY date) flag
+        FROM timer_data
+        JOIN tasks t ON t.id = timer_data.task_id
+        WHERE task_name LIKE (?)
+        GROUP BY date)
+        )
+SELECT MAX(COUNT(*)) OVER () longest_streak,
+            COUNT(*) current_streak
+FROM cte
+GROUP BY grp
+ORDER BY grp desc
+LIMIT 1;
+'''
+
+TASK_LIST = 'SELECT DISTINCT task_name FROM tasks;'
+
 def timer_count(connexion, time_span):
     with connexion:
         if time_span == 'today':
@@ -78,3 +99,23 @@ def average_day(connexion):
     with connexion:
         avg = connexion.execute(AVG_TIME_DAY).fetchone()
     return avg[0]
+
+def task_list(connexion):
+    with connexion:
+        tasks = []
+        tasks += connexion.execute(TASK_LIST).fetchall()
+        return tasks
+
+def current_and_max_streak(connexion, task):
+    with connexion:
+        task_streak = connexion.execute(MAX_AND_CURRENT_STREAK, [task]).fetchall()
+    return task_streak
+
+def all_task_streaks(connexion):
+    tasks = []
+    all_tasks = task_list(connexion)[1:]
+    for task in all_tasks:
+        tasks.append(task[0])
+    for task in tasks:
+        streak = current_and_max_streak(connexion, task)
+        print(f"Max streak for {task} : {streak[0][0]}")

@@ -46,9 +46,6 @@ def start():
         elif user_input == 4:
             # Count number of timers and total time for different spans (day, week, year),
             # gives an average day and a maximum.
-            avg_day = stats.average_day(connexion)
-            print(f"\nYour average day : {avg_day}")
-
             today_timer = stats.timer_count(connexion, 'today')
             time_today = stats.total_time(connexion, 'today')
             suffix = 's' if today_timer > 1 else ''
@@ -56,7 +53,13 @@ def start():
 
             time_per_task = stats.time_per_task_today(connexion)
             for task, time in time_per_task:
+                task_streak = stats.current_and_max_streak(connexion, task)
+                max = "(max streak!)" if task_streak[0][1] == task_streak[0][0] else f"(max : {task_streak[0][0]})"
                 print(f"\t{task} : {time}")
+                print(f"\t\tCurrent streak : {task_streak[0][1]} {max}")
+
+            avg_day = stats.average_day(connexion)
+            print(f"\nYour average day : {avg_day}")
 
             max_stat = stats.max_in_a_day(connexion)
             print(f"\nYour maximum : {max_stat[1]} ({max_stat[0]}).\n")
