@@ -38,14 +38,14 @@ def start():
 
         elif user_input == 3:
             id = task_input_to_id(connexion)
-            timer_data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
             input("Press key when ready.")
+            timer_data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
             clocks.stopwatch()
             timer_data.updating_row(connexion, datetime.datetime.now())
 
         elif user_input == 4:
             # Count number of timers and total time for different spans (day, week, year),
-            # gives an average day and a maximum.
+            # gives an average time per day and a maximum.
             today_timer = stats.timer_count(connexion, 'today')
             time_today = stats.total_time(connexion, 'today')
             suffix = 's' if today_timer > 1 else ''

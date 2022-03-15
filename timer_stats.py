@@ -23,7 +23,11 @@ TOTAL_TIME_WEEK = '''
 YEAR_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))"
 
 TOTAL_TIME_YEAR = '''
-    SELECT printf("%02d:%02d:%02d:%02d", totsec / 86400, (totsec % 86400) / 3600, (totsec % 3600) / 60, (totsec % 86400) / 3600) as total
+    SELECT printf("%02d:%02d:%02d:%02d",
+                  totsec / 86400,
+                  (totsec % 86400) / 3600,
+                  (totsec % 3600) / 60,
+                  (totsec % 86400) / 3600) as total
     FROM (
         SELECT sum(time_elapsed) as totsec
         FROM timer_data
