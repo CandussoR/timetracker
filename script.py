@@ -77,7 +77,7 @@ def start():
 
 
 def task_input_to_id(connexion):
-    input_task = input("What do we do ? > ")
+    input_task = task_data.task_string_input()
     if re.search(r'\W', input_task):
         input_task = task_data.parse_input(input_task)
     else:
@@ -91,7 +91,6 @@ def task_input_to_id(connexion):
         print("Getting it's id...")
     id = task_data.fetch_id(connexion, *input_task)
     return id
-
 
 def end_ring():
     playsound('Flow.mp3')

@@ -43,6 +43,15 @@ def create_tables(connexion):
         connexion.execute(CREATE_TIMER_TABLE)
         connexion.execute(CREATE_TASK_TABLE)
 
+def task_string_input():
+    while True:
+        try:
+            task_input = input("What do we do? > ")
+            if int(task_input):
+                print("Task name must be a string.")
+        except ValueError :
+            return task_input
+            
 def parse_input(task_input):
     parsed = split('\W', task_input, 1)
     return parsed[0], parsed[1]
