@@ -27,7 +27,7 @@ def start():
             timer_data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
             clocks.timer(t_minutes)
             print("Good job!")
-            timer_data.updating_row(connexion, datetime.datetime.now())
+            timer_data.update_row_at_ending(connexion, datetime.datetime.now())
             end_ring()
 
         elif user_input == 2:
@@ -41,7 +41,7 @@ def start():
             input("Press key when ready.")
             timer_data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
             clocks.stopwatch()
-            timer_data.updating_row(connexion, datetime.datetime.now())
+            timer_data.update_row_at_ending(connexion, datetime.datetime.now())
 
         elif user_input == 4:
             # Count number of timers and total time for different spans (day, week, year),
