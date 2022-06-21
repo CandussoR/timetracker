@@ -1,6 +1,7 @@
 import datetime
 import clocks
 from playsound import playsound
+import sqlite_db
 import task_data
 import timer_data
 import timer_stats as stats
@@ -15,8 +16,8 @@ Select an option:
     '''
 
 def start():
-    connexion = task_data.connect()
-    task_data.create_tables(connexion)
+    connexion = sqlite_db.connect('timer_data.db')
+    sqlite_db.create_tables(connexion)
 
     while (user_input := int(input(MENU_PROMPT))) != 5:
 
