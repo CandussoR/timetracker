@@ -9,9 +9,9 @@ ADD_TIME_DIFFERENCE = '''UPDATE timer_data
                          SET time_elapsed = strftime('%s',time_ending) - strftime('%s',time_beginning)
                          WHERE time_elapsed IS NULL;'''
 
-LAST_TIME_ELAPSED = '''SELECT time_elapsed 
+LAST_TIME_ELAPSED = '''SELECT id, time_elapsed 
                     FROM timer_data 
-                    ORDER BY column DESC 
+                    ORDER BY id DESC 
                     LIMIT 1;'''
 
 TIME_ELAPSED_PLUS_ONE_DAY = '''UPDATE timer_data
@@ -31,19 +31,19 @@ def update_row_at_ending(connexion, time):
     if time_elapsed_is_negative(connexion) :
         add_day_to_time_elapsed(connexion)
 
-    def add_time_ending(connexion, time_ending):
+def add_time_ending(connexion, time_ending):
         with connexion:
             connexion.execute(UPDATE_TIMER_ENDING, [time_ending])
 
-    def add_elapsed_time(connexion):
+def add_elapsed_time(connexion):
         with connexion:
             connexion.execute(ADD_TIME_DIFFERENCE)
 
-    def time_elapsed_is_negative(connexion):
+def time_elapsed_is_negative(connexion):
         with connexion:
-            time_elapsed = connexion.execute(LAST_TIME_ELAPSED)
-            return time_elapsed[0] < 0 
+            time_elapsed = connexion.execute(LAST_TIME_ELAPSED).fetchone()
+            return time_elapsed[1] < 0 
 
-    def add_day_to_time_elapsed(connexion):
+def add_day_to_time_elapsed(connexion):
         with connexion:
             connexion.execute(TIME_ELAPSED_PLUS_ONE_DAY)
