@@ -110,16 +110,13 @@ def task_list(connexion):
         tasks += connexion.execute(TASK_LIST).fetchall()
         return tasks
 
-def current_and_max_streak(connexion, task):
+def max_and_current_streaks(connexion, task):
     with connexion:
         task_streak = connexion.execute(MAX_AND_CURRENT_STREAK, [task]).fetchall()
     return task_streak
 
 def all_task_streaks(connexion):
-    tasks = []
     all_tasks = task_list(connexion)[1:]
     for task in all_tasks:
-        tasks.append(task[0])
-    for task in tasks:
-        streak = current_and_max_streak(connexion, task)
-        print(f"Max streak for {task} : {streak[0][0]}")
+        streak = max_and_current_streaks(connexion, task[0])
+        print(f"Max streak for {task[0]} : {streak[0][0]}")
