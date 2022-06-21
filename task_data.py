@@ -1,5 +1,5 @@
 import sqlite3
-from re import split
+import re
 
 CREATE_TASK_TABLE = '''
       CREATE TABLE IF NOT EXISTS tasks (
@@ -43,6 +43,20 @@ def create_tables(connexion):
         connexion.execute(CREATE_TIMER_TABLE)
         connexion.execute(CREATE_TASK_TABLE)
 
+def task_input_to_id(connexion):
+    input_task = task_string_input()
+    if re.search(r'\W', input_task):
+        input_task = parse_input(input_task)
+    else:
+        input_task = [input_task]
+    try:
+        check_existence(connexion, *input_task)
+        print("The task exists. Getting it's id...")
+    except:
+        print("The task doesn't exist yet. Adding it...")
+        insert_new_task(connexion, *input_task)
+    return fetch_id(connexion, *input_task) 
+
 def task_string_input():
     while True:
         try:
@@ -53,7 +67,7 @@ def task_string_input():
             return task_input
             
 def parse_input(task_input):
-    parsed = split('\W', task_input, 1)
+    parsed = re.split('\W', task_input, 1)
     return parsed[0], parsed[1]
 
 def check_existence(connexion, *task):

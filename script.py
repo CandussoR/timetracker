@@ -1,7 +1,6 @@
 import datetime
 import clocks
 from playsound import playsound
-import re
 import task_data
 import timer_data
 import timer_stats as stats
@@ -22,8 +21,9 @@ def start():
     while (user_input := int(input(MENU_PROMPT))) != 5:
 
         if user_input == 1:
-            id = task_input_to_id(connexion)
+            id = task_data.task_input_to_id(connexion)
             t_minutes = int(input("How long ? > "))*60
+            input("Press key when ready.")
             timer_data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
             clocks.timer(t_minutes)
             print("Good job!")
@@ -37,7 +37,7 @@ def start():
             end_ring()
 
         elif user_input == 3:
-            id = task_input_to_id(connexion)
+            id = task_data.task_input_to_id(connexion)
             input("Press key when ready.")
             timer_data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
             clocks.stopwatch()
@@ -73,24 +73,7 @@ def start():
             print(f"This year : {year_timer} timer{suffix} ({time_year}).\n")
 
         else:
-            print("Invalid input, try again.")
-
-
-def task_input_to_id(connexion):
-    input_task = task_data.task_string_input()
-    if re.search(r'\W', input_task):
-        input_task = task_data.parse_input(input_task)
-    else:
-        input_task = [input_task]
-    try:
-        task_data.check_existence(connexion, *input_task)
-        print("The task exists. Getting it's id...")
-    except:
-        print("The task doesn't exist yet. Adding it...")
-        task_data.insert_new_task(connexion, *input_task)
-        print("Getting it's id...")
-    id = task_data.fetch_id(connexion, *input_task)
-    return id
+            print("Invalid input, try again.") 
 
 def end_ring():
     playsound('Flow.mp3')
