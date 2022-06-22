@@ -70,41 +70,48 @@ LIMIT 1;
 TASK_LIST = 'SELECT DISTINCT task_name FROM tasks;'
 
 def timer_count(connexion, time_span):
-    if time_span == 'today':
-        number = connexion.execute(TODAY_COUNT).fetchone()
-    elif time_span == 'week':
-        number = connexion.execute(WEEK_COUNT).fetchone()
-    elif time_span == 'year':
-        number = connexion.execute(YEAR_COUNT).fetchone()
+    with connexion:
+        if time_span == 'today':
+            number = connexion.execute(TODAY_COUNT).fetchone()
+        elif time_span == 'week':
+            number = connexion.execute(WEEK_COUNT).fetchone()
+        elif time_span == 'year':
+            number = connexion.execute(YEAR_COUNT).fetchone()
     return number[0]
 
 def total_time(connexion, time_span):
-    if time_span == 'today':
-        timer_per_task = connexion.execute(TOTAL_TIME_TODAY).fetchone()
-    elif time_span == 'week':
-        timer_per_task = connexion.execute(TOTAL_TIME_WEEK).fetchone()
-    elif time_span == 'year':
-        timer_per_task = connexion.execute(TOTAL_TIME_YEAR).fetchone()
-    return timer_per_task[0]
+    with connexion:
+        if time_span == 'today':
+            timer_per_task = connexion.execute(TOTAL_TIME_TODAY).fetchone()
+        elif time_span == 'week':
+            timer_per_task = connexion.execute(TOTAL_TIME_WEEK).fetchone()
+        elif time_span == 'year':
+            timer_per_task = connexion.execute(TOTAL_TIME_YEAR).fetchone()
+        return timer_per_task[0]
 
 def time_per_task_today(connexion):
-    time_per_task = connexion.execute(TIME_PER_TASK_TODAY).fetchall()
+    with connexion:
+        time_per_task = connexion.execute(TIME_PER_TASK_TODAY).fetchall()
     return time_per_task
 
 def max_in_a_day(connexion):
-    max = connexion.execute(DAY_MAX).fetchone()
+    with connexion:
+        max = connexion.execute(DAY_MAX).fetchone()
     return max
 
 def average_day(connexion):
-    avg = connexion.execute(AVG_TIME_DAY).fetchone()
+    with connexion:
+        avg = connexion.execute(AVG_TIME_DAY).fetchone()
     return avg[0]
 
 def task_list(connexion):
-    tasks = connexion.execute(TASK_LIST).fetchall()
-    return tasks[1:]
+    with connexion:
+        tasks = connexion.execute(TASK_LIST).fetchall()
+        return tasks[1:]
 
 def max_and_current_streaks(connexion, task):
-    task_streak = connexion.execute(MAX_AND_CURRENT_STREAK, [task]).fetchall()
+    with connexion:
+        task_streak = connexion.execute(MAX_AND_CURRENT_STREAK, [task]).fetchall()
     return task_streak
 
 def all_task_streaks(connexion):
