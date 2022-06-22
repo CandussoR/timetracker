@@ -22,11 +22,13 @@ INSERT_PAST_TIMER = '''INSERT INTO timer_data (task_id, date, time_beginning, ti
                     VALUES (?,date(?),time(?),time(?));'''
 
 def insert_beginning(connexion, task_at_hand_id, date, beginning_time):
-    connexion.execute(INSERT_TIMER_BEGINNING, (task_at_hand_id, date,\
+    with connexion:
+        connexion.execute(INSERT_TIMER_BEGINNING, (task_at_hand_id, date,\
                                 beginning_time))
 
 def insert_old_timer(connexion, params):
-    connexion.execute(INSERT_PAST_TIMER, [*params])
+    with connexion:
+        connexion.execute(INSERT_PAST_TIMER, [*params])
     update_time_elapsed(connexion)
 
 def update_row_at_ending(connexion, time):
@@ -39,16 +41,20 @@ def update_time_elapsed(connexion):
         add_day_to_time_elapsed(connexion)
 
 def add_time_ending(connexion, time_ending):
-        connexion.execute(UPDATE_TIMER_ENDING, [time_ending])
+        with connexion:
+                connexion.execute(UPDATE_TIMER_ENDING, [time_ending])
 
 def add_elapsed_time(connexion):
-        connexion.execute(ADD_TIME_DIFFERENCE)
+        with connexion:
+                connexion.execute(ADD_TIME_DIFFERENCE)
 
 def time_elapsed_is_negative(connexion):
-        time_elapsed = connexion.execute(LAST_TIME_ELAPSED).fetchone()
-        return time_elapsed[1] < 0 
+        with connexion:
+                time_elapsed = connexion.execute(LAST_TIME_ELAPSED).fetchone()
+                return time_elapsed[1] < 0 
 
 def add_day_to_time_elapsed(connexion):
-        connexion.execute(TIME_ELAPSED_PLUS_ONE_DAY)
+        with connexion:
+                connexion.execute(TIME_ELAPSED_PLUS_ONE_DAY)
 
     

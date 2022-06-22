@@ -57,7 +57,7 @@ def insert_new_task(connexion, *task):
 def fetch_id(connexion, *task):
     with connexion:
         if len(task) == 2 :
-            retrieved_id += connexion.execute(RETRIEVE_TUPLE_ID, [*task]).fetchone()
+            retrieved_id = connexion.execute(RETRIEVE_TUPLE_ID, [*task]).fetchone()
         else:
-            retrieved_id += connexion.execute(RETRIEVE_ID, [*task]).fetchone()
+            retrieved_id = connexion.execute(RETRIEVE_ID, [*task]).fetchone()
     return retrieved_id[0]
