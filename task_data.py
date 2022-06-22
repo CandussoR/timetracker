@@ -1,4 +1,3 @@
-import sqlite3
 import re
 
 CHECK_TASK_EXISTENCE = 'SELECT id FROM tasks WHERE task_name=(?);'
@@ -30,7 +29,7 @@ def task_input_to_id(connexion):
 def task_string_input():
     while True:
         try:
-            task_input = input("What do we do? > ")
+            task_input = input("Enter a task. > ")
             if int(task_input):
                 print("Task name must be a string.")
         except ValueError :
