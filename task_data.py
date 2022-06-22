@@ -40,21 +40,24 @@ def parse_input(task_input):
     return parsed[0], parsed[1]
 
 def check_existence(connexion, *task):
-    if len(task) == 2 :
-        result = connexion.execute(CHECK_TUPLE_EXISTENCE, [*task]).fetchone()
-    else :
-        result = connexion.execute(CHECK_TASK_EXISTENCE, [*task]).fetchone()
+    with connexion:
+        if len(task) == 2 :
+            result = connexion.execute(CHECK_TUPLE_EXISTENCE, [*task]).fetchone()
+        else :
+            result = connexion.execute(CHECK_TASK_EXISTENCE, [*task]).fetchone()
     return result[0]
 
 def insert_new_task(connexion, *task):
-    if len(task) == 2 :
-        connexion.execute(INSERT_NEW_TUPLE, [*task])
-    else:
-        connexion.execute(INSERT_NEW_TASK, [*task])
+    with connexion:
+        if len(task) == 2 :
+            connexion.execute(INSERT_NEW_TUPLE, [*task])
+        else:
+            connexion.execute(INSERT_NEW_TASK, [*task])
 
 def fetch_id(connexion, *task):
-    if len(task) == 2 :
-        retrieved_id = connexion.execute(RETRIEVE_TUPLE_ID, [*task]).fetchone()
-    else:
-        retrieved_id = connexion.execute(RETRIEVE_ID, [*task]).fetchone()
+    with connexion:
+        if len(task) == 2 :
+            retrieved_id += connexion.execute(RETRIEVE_TUPLE_ID, [*task]).fetchone()
+        else:
+            retrieved_id += connexion.execute(RETRIEVE_ID, [*task]).fetchone()
     return retrieved_id[0]
