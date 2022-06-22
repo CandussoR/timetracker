@@ -106,9 +106,8 @@ def average_day(connexion):
 
 def task_list(connexion):
     with connexion:
-        tasks = []
-        tasks += connexion.execute(TASK_LIST).fetchall()
-        return tasks
+        tasks = connexion.execute(TASK_LIST).fetchall()
+        return tasks[1:]
 
 def max_and_current_streaks(connexion, task):
     with connexion:
@@ -116,7 +115,7 @@ def max_and_current_streaks(connexion, task):
     return task_streak
 
 def all_task_streaks(connexion):
-    all_tasks = task_list(connexion)[1:]
+    all_tasks = task_list(connexion)
     for task in all_tasks:
         streak = max_and_current_streaks(connexion, task[0])
         print(f"Max streak for {task[0]} : {streak[0][0]}")
