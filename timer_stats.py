@@ -91,31 +91,26 @@ def total_time(connexion, time_span):
 
 def time_per_task_today(connexion):
     with connexion:
-        time_per_task = connexion.execute(TIME_PER_TASK_TODAY).fetchall()
-    return time_per_task
+        return connexion.execute(TIME_PER_TASK_TODAY).fetchall()
 
 def max_in_a_day(connexion):
     with connexion:
-        max = connexion.execute(DAY_MAX).fetchone()
-    return max
+        return connexion.execute(DAY_MAX).fetchone()
 
 def average_day(connexion):
     with connexion:
-        avg = connexion.execute(AVG_TIME_DAY).fetchone()
-    return avg[0]
+        return connexion.execute(AVG_TIME_DAY).fetchone()[0]
 
 def task_list(connexion):
     with connexion:
-        tasks = connexion.execute(TASK_LIST).fetchall()
-        return tasks[1:]
+        # Returns list from index 1 cause index 0 is a special char, not a task
+        return connexion.execute(TASK_LIST).fetchall()[1:]
 
 def max_and_current_streaks(connexion, task):
     with connexion:
-        task_streak = connexion.execute(MAX_AND_CURRENT_STREAK, [task]).fetchall()
-    return task_streak
+        return connexion.execute(MAX_AND_CURRENT_STREAK, [task]).fetchall()
 
 def all_task_streaks(connexion):
-    all_tasks = task_list(connexion)
-    for task in all_tasks:
+    for task in task_list(connexion):
         streak = max_and_current_streaks(connexion, task[0])
-        print(f"Max streak for {task[0]} : {streak[0][0]}")
+        print(f"\tMax streak for {task[0]} : {streak[0][0]}")

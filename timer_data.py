@@ -50,8 +50,7 @@ def add_elapsed_time(connexion):
 
 def time_elapsed_is_negative(connexion):
         with connexion:
-                time_elapsed = connexion.execute(LAST_TIME_ELAPSED).fetchone()
-                return time_elapsed[1] < 0 
+                return connexion.execute(LAST_TIME_ELAPSED).fetchone()[1] < 0
 
 def add_day_to_time_elapsed(connexion):
         with connexion:
