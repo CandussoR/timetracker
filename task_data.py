@@ -17,7 +17,7 @@ def task_input_to_id(connexion):
     if re.search(r'\W', input_task):
         input_task = parse_input(input_task)
     else:
-        input_task = [input_task]
+        input_task = [input_task.title()]
     try:
         check_existence(connexion, *input_task)
         print("The task exists. Getting it's id...")
@@ -37,7 +37,7 @@ def task_string_input():
             
 def parse_input(task_input):
     parsed = re.split('\W', task_input, 1)
-    return parsed[0], parsed[1]
+    return parsed[0].title(), parsed[1].title()
 
 def check_existence(connexion, *task):
     with connexion:
