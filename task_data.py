@@ -12,6 +12,7 @@ INSERT_NEW_TUPLE = 'INSERT INTO tasks (task_name, subtask) VALUES (?, ?);'
 
 RETRIEVE_TUPLE_ID = 'SELECT id FROM tasks WHERE task_name=(?) AND subtask=(?);'
 
+
 def task_input_to_id(connexion):
     input_task = task_string_input()
     if re.search(r'\W', input_task):
@@ -36,8 +37,8 @@ def task_string_input():
             return task_input
             
 def parse_input(task_input):
-    parsed = re.split('\W', task_input, 1)
-    return parsed[0].title(), parsed[1].title()
+    task, subtask = re.split('\W', task_input, 1)
+    return task.title(), subtask.title()
 
 def check_existence(connexion, *task):
     with connexion:

@@ -62,13 +62,14 @@ def start():
         elif user_input == 5:
             print("What task was it ?")
             id = task_data.task_input_to_id(connexion)
-            date = input("Date? (YYYY-MM-DD) \n> ")
+            print("Date? (YYYY-MM-DD) > ", end="")
+            date = input()
             time_beginning = input("Beginning ? (HH:MM:SS) \n> ")
             time_ending = input("Ending ? (HH:MM:SS) \n> ")
             data.insert_old_timer(connexion, [id, date, time_beginning, time_ending])
 
         else:
-            print("Invalid input, read the prompt.") 
+            print("Invalid input, enter a number between 1 and 6.") 
 
 def end_ring():
     playsound('Flow.mp3')
