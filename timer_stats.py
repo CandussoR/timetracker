@@ -19,7 +19,7 @@ TOTAL_TIME_WEEK = '''
     FROM (
         SELECT sum(time_elapsed) as totsec
         FROM timer_data
-        WHERE date(date) > date('now', 'weekday 0', '-7 days')
+        WHERE date(date) > date('now', 'weekday 0', ?)
         );'''
 
 YEAR_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))"
@@ -112,7 +112,8 @@ def total_time(connexion, time_span) -> str :
         if time_span == 'today':
             timer_per_task = connexion.execute(TOTAL_TIME_TODAY).fetchone()
         elif time_span == 'week':
-            timer_per_task = connexion.execute(TOTAL_TIME_WEEK).fetchone()
+            day_difference = 7
+            timer_per_task = connexion.execute(TOTAL_TIME_WEEK, [f"-{day_difference} days"]).fetchone()
         elif time_span == 'year':
             timer_per_task = connexion.execute(TOTAL_TIME_YEAR).fetchone()
         return timer_per_task[0]
