@@ -33,7 +33,8 @@ def insert_beginning(connexion : Connection, task_at_hand_id, date, beginning_ti
 def insert_old_timer(connexion : Connection, params):
     with connexion:
         connexion.execute(INSERT_PAST_TIMER, [*params])
-    update_time_elapsed(connexion)
+    last_id = connexion.execute(LAST_ID).fetchone()[0] 
+    update_time_elapsed(connexion, last_id)
 
 def update_row_at_ending(connexion : Connection, time):
     last_id = connexion.execute(LAST_ID).fetchone()[0] 
