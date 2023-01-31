@@ -15,8 +15,6 @@ Select an option :
     5) Insert old timer,
     6) Extend last timer to now,
     7) Quit.\n
-
-Use CTRL+C to come back here.
     '''
 
 def start():

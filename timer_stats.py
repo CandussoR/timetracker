@@ -14,12 +14,27 @@ TOTAL_TIME_TODAY = '''SELECT time(sum(time_elapsed), 'unixepoch') FROM timer_dat
 
 WEEK_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(date) > date('now', 'weekday 0', '-7 days')"
 
-TOTAL_TIME_WEEK = '''
+DATES = "SELECT date('now', 'weekday 1', ?), date('now', 'weekday 0', ?)"
+
+SELECT_WEEK_TIMERS = '''
+        SELECT *
+        FROM timer_data
+        WHERE date(date) BETWEEN date('now', 'weekday 0', ?) and date('now', 'weekday 1', ?);'''
+
+TOTAL_TIME_THIS_WEEK = '''
     SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, (totsec % 86400) / 3600) as total
     FROM (
         SELECT sum(time_elapsed) as totsec
         FROM timer_data
-        WHERE date(date) > date('now', 'weekday 0', ?)
+        WHERE date(date) > date('now', 'weekday 0', '-7 days')
+        );'''
+
+TOTAL_TIME_PARTICULAR_WEEK = '''
+    SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, (totsec % 86400) / 3600) as total
+    FROM (
+        SELECT sum(time_elapsed) as totsec
+        FROM timer_data
+        WHERE date(date) BETWEEN date('now', 'weekday 0', ?) and date('now', 'weekday 1', ?)
         );'''
 
 YEAR_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))"
@@ -97,6 +112,10 @@ def display_stats(connexion):
     if more == 'y':
         all_task_streaks(connexion)
 
+    weeks = input("See last weeks (y) ?")
+    if weeks == 'y':
+        past_weeks(connexion)
+
 def timer_count(connexion, time_span) -> int :
     with connexion:
         if time_span == 'today':
@@ -112,8 +131,7 @@ def total_time(connexion, time_span) -> str :
         if time_span == 'today':
             timer_per_task = connexion.execute(TOTAL_TIME_TODAY).fetchone()
         elif time_span == 'week':
-            day_difference = 7
-            timer_per_task = connexion.execute(TOTAL_TIME_WEEK, [f"-{day_difference} days"]).fetchone()
+            timer_per_task = connexion.execute(TOTAL_TIME_THIS_WEEK).fetchone()
         elif time_span == 'year':
             timer_per_task = connexion.execute(TOTAL_TIME_YEAR).fetchone()
         return timer_per_task[0]
@@ -143,3 +161,20 @@ def all_task_streaks(connexion):
     for task in task_list(connexion):
         streak = max_and_current_streaks(connexion, task[0])
         print(f"  Max streak for {task[0]} : {streak[0][0]}")
+
+def past_weeks(connexion):
+    with connexion :
+        day_difference = 7
+        for week_delta in list(range(1,4)):
+            (monday,sunday) = connexion.execute(DATES, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchone()
+            timer_per_task = connexion.execute(TOTAL_TIME_PARTICULAR_WEEK, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchall()
+            print(f"Week from Monday {monday} to Sunday {sunday} : \n\t Total time : {timer_per_task[0][0]}")
+
+if __name__ == '__main__':
+    import sqlite3
+    try:
+        connexion = sqlite3.connect('timer_data.db')
+        cursor = connexion.cursor()
+        weeks = past_weeks(connexion)
+    except Exception as e :
+        raise Exception(e)
