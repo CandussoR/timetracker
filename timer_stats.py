@@ -1,4 +1,6 @@
 import typing
+from sqlite3.dbapi2 import Connection
+from datetime import datetime
 
 TIME_PER_TASK_TODAY = '''SELECT t.task_name, time(sum(time_elapsed), 'unixepoch') as time
                    FROM timer_data td
@@ -57,11 +59,17 @@ DAY_MAX = '''SELECT date, MAX(sum_time)
             FROM timer_data
             GROUP BY date);'''
 
+AVG_TIME_ALL_DAYS = '''SELECT time(AVG(sum_time), 'unixepoch')
+            FROM (
+            SELECT sum(time_elapsed) as sum_time
+            FROM timer_data
+            );'''
+
 AVG_TIME_DAY = '''SELECT time(AVG(sum_time), 'unixepoch')
             FROM (
             SELECT sum(time_elapsed) as sum_time
             FROM timer_data
-            WHERE date LIKE '2022%'
+            WHERE date LIKE (?)
             GROUP BY date
             );'''
 
@@ -99,7 +107,7 @@ def display_stats(connexion):
         print(f"\t{task} : {time}")
         print(f"\t\tCurrent streak : {task_streak[0][1]} {max}")
 
-    print(f"\nYour average day : {average_day(connexion)}")
+    print(f"\nThis year's average day : {average_day_this_year(connexion)}")
 
     max_stat = max_in_a_day(connexion)
     print(f"\nYour maximum : {max_stat[1]} ({max_stat[0]}).\n")
@@ -108,13 +116,14 @@ def display_stats(connexion):
 
     print(f"This year : {timer_count(connexion, 'year')} timer{suffix} ({total_time(connexion, 'year')}).\n")
 
-    more = input("See every task max streak (y) ? ")
+    more = input("See every task max streak (y) ?\n\t>> ")
     if more == 'y':
         all_task_streaks(connexion)
 
-    weeks = input("See last weeks (y) ?")
+    weeks = input("See last weeks (y) ? >> ")
     if weeks == 'y':
-        past_weeks(connexion)
+        number_of_weeks : int = int(input("\tHow many ?\n\t>> "))
+        past_weeks(connexion, number_of_weeks)
 
 def timer_count(connexion, time_span) -> int :
     with connexion:
@@ -144,9 +153,17 @@ def max_in_a_day(connexion) -> typing.Tuple[str, str]:
     with connexion:
         return connexion.execute(DAY_MAX).fetchone()
 
-def average_day(connexion) -> str:
+def all_time_average_day(connexion) -> str:
     with connexion:
-        return connexion.execute(AVG_TIME_DAY).fetchone()[0]
+        return connexion.execute(AVG_TIME_ALL_DAYS).fetchone()[0]
+
+def average_day_this_year(connexion : Connection):
+    with connexion:
+        return connexion.execute(AVG_TIME_DAY, [f"{datetime.now().year}%"]).fetchone()[0]
+        
+def average_day_for_year(connexion : Connection, year : str|int):
+    with connexion:
+        return connexion.execute(AVG_TIME_DAY, [f"{str(year)}%"]).fetchone()[0]
 
 def task_list(connexion) -> list :
     with connexion:
@@ -162,10 +179,10 @@ def all_task_streaks(connexion):
         streak = max_and_current_streaks(connexion, task[0])
         print(f"  Max streak for {task[0]} : {streak[0][0]}")
 
-def past_weeks(connexion):
+def past_weeks(connexion, number_of_weeks : int):
     with connexion :
         day_difference = 7
-        for week_delta in list(range(1,4)):
+        for week_delta in list(range(1,number_of_weeks+1)):
             (monday,sunday) = connexion.execute(DATES, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchone()
             timer_per_task = connexion.execute(TOTAL_TIME_PARTICULAR_WEEK, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchall()
             print(f"Week from Monday {monday} to Sunday {sunday} : \n\t Total time : {timer_per_task[0][0]}")
@@ -175,6 +192,9 @@ if __name__ == '__main__':
     try:
         connexion = sqlite3.connect('timer_data.db')
         cursor = connexion.cursor()
-        weeks = past_weeks(connexion)
+        all_time_avg = all_time_average_day(connexion)
+        this_year_avg = average_day_this_year(connexion)
+        last_year_avg = average_day_for_year(connexion, 2022)
+        print("done")
     except Exception as e :
         raise Exception(e)
