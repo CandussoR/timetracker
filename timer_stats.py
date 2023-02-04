@@ -94,7 +94,7 @@ LIMIT 1;
 
 TASK_LIST = 'SELECT DISTINCT task_name FROM tasks;'
 
-def display_stats(connexion):
+def display_stats(connexion : Connection):
     # Count number of timers and total time for different spans (day, week, year),
     # gives an average time per day and a maximum.
     today_timer = timer_count(connexion, 'today')
@@ -125,7 +125,7 @@ def display_stats(connexion):
         number_of_weeks : int = int(input("\tHow many ?\n\t>> "))
         past_weeks(connexion, number_of_weeks)
 
-def timer_count(connexion, time_span) -> int :
+def timer_count(connexion : Connection, time_span : str) -> int :
     with connexion:
         if time_span == 'today':
             number = connexion.execute(TODAY_COUNT).fetchone()
@@ -135,7 +135,7 @@ def timer_count(connexion, time_span) -> int :
             number = connexion.execute(YEAR_COUNT).fetchone()
     return number[0]
 
-def total_time(connexion, time_span) -> str :
+def total_time(connexion : Connection, time_span : str) -> str :
     with connexion:
         if time_span == 'today':
             timer_per_task = connexion.execute(TOTAL_TIME_TODAY).fetchone()
@@ -145,41 +145,41 @@ def total_time(connexion, time_span) -> str :
             timer_per_task = connexion.execute(TOTAL_TIME_YEAR).fetchone()
         return timer_per_task[0]
 
-def time_per_task_today(connexion) -> str:
+def time_per_task_today(connexion : Connection) -> str:
     with connexion:
         return connexion.execute(TIME_PER_TASK_TODAY).fetchall()
 
-def max_in_a_day(connexion) -> typing.Tuple[str, str]:
+def max_in_a_day(connexion : Connection) -> typing.Tuple[str, str]:
     with connexion:
         return connexion.execute(DAY_MAX).fetchone()
 
-def all_time_average_day(connexion) -> str:
+def all_time_average_day(connexion : Connection) -> str:
     with connexion:
         return connexion.execute(AVG_TIME_ALL_DAYS).fetchone()[0]
 
-def average_day_this_year(connexion : Connection):
+def average_day_this_year(connexion : Connection) -> str:
     with connexion:
         return connexion.execute(AVG_TIME_DAY, [f"{datetime.now().year}%"]).fetchone()[0]
         
-def average_day_for_year(connexion : Connection, year : str|int):
+def average_day_for_year(connexion : Connection, year : str|int) -> str:
     with connexion:
         return connexion.execute(AVG_TIME_DAY, [f"{str(year)}%"]).fetchone()[0]
 
-def task_list(connexion) -> list :
+def task_list(connexion : Connection) -> list :
     with connexion:
         # Returns list from index 1 cause index 0 is a special char, not a task
         return connexion.execute(TASK_LIST).fetchall()[1:]
 
-def max_and_current_streaks(connexion, task) -> list[tuple]:
+def max_and_current_streaks(connexion : Connection, task : str) -> typing.Tuple[str, str]:
     with connexion:
         return connexion.execute(MAX_AND_CURRENT_STREAK, [task]).fetchall()
 
-def all_task_streaks(connexion):
+def all_task_streaks(connexion : Connection):
     for task in task_list(connexion):
         streak = max_and_current_streaks(connexion, task[0])
         print(f"  Max streak for {task[0]} : {streak[0][0]}")
 
-def past_weeks(connexion, number_of_weeks : int):
+def past_weeks(connexion : Connection, number_of_weeks : int):
     with connexion :
         day_difference = 7
         for week_delta in list(range(1,number_of_weeks+1)):
