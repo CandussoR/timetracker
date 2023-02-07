@@ -1,4 +1,4 @@
-import typing
+from typing import Tuple, Union
 from sqlite3.dbapi2 import Connection
 from datetime import datetime
 
@@ -120,7 +120,7 @@ def display_stats(connexion : Connection):
     if more == 'y':
         all_task_streaks(connexion)
 
-    weeks = input("See last weeks (y) ? >> ")
+    weeks = input("See last weeks (y) ?\n\t>> ")
     if weeks == 'y':
         number_of_weeks : int = int(input("\tHow many ?\n\t>> "))
         past_weeks(connexion, number_of_weeks)
@@ -149,7 +149,7 @@ def time_per_task_today(connexion : Connection) -> str:
     with connexion:
         return connexion.execute(TIME_PER_TASK_TODAY).fetchall()
 
-def max_in_a_day(connexion : Connection) -> typing.Tuple[str, str]:
+def max_in_a_day(connexion : Connection) -> Tuple[str, str]:
     with connexion:
         return connexion.execute(DAY_MAX).fetchone()
 
@@ -161,7 +161,7 @@ def average_day_this_year(connexion : Connection) -> str:
     with connexion:
         return connexion.execute(AVG_TIME_DAY, [f"{datetime.now().year}%"]).fetchone()[0]
         
-def average_day_for_year(connexion : Connection, year : str|int) -> str:
+def average_day_for_year(connexion : Connection, year : Union[str, int]) -> str:
     with connexion:
         return connexion.execute(AVG_TIME_DAY, [f"{str(year)}%"]).fetchone()[0]
 
@@ -170,7 +170,7 @@ def task_list(connexion : Connection) -> list :
         # Returns list from index 1 cause index 0 is a special char, not a task
         return connexion.execute(TASK_LIST).fetchall()[1:]
 
-def max_and_current_streaks(connexion : Connection, task : str) -> typing.Tuple[str, str]:
+def max_and_current_streaks(connexion : Connection, task : str) -> Tuple[str, str]:
     with connexion:
         return connexion.execute(MAX_AND_CURRENT_STREAK, [task]).fetchall()
 
