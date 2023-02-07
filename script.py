@@ -56,7 +56,10 @@ def start():
             data.update_row_at_ending(connexion, datetime.datetime.now())
 
         elif user_input == 4:
-            stats.display_stats(connexion)
+            try:
+                stats.display_stats(connexion)
+            except KeyboardInterrupt:
+                continue
             
         elif user_input == 5:
             print("What task was it ?")
