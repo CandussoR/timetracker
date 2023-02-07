@@ -1,7 +1,7 @@
 .DS_Store
 .ipynb_checkpoints/
 Tests/
-Untitled.ipynb
+*.ipynb
 __pycache__/
 timer_data.db
 .vscode/
