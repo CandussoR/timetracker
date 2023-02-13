@@ -36,7 +36,7 @@ TOTAL_TIME_PARTICULAR_WEEK = '''
     FROM (
         SELECT sum(time_elapsed) as totsec
         FROM timer_data
-        WHERE date(date) BETWEEN date('now', 'weekday 0', ?) and date('now', 'weekday 1', ?)
+        WHERE date BETWEEN date('now', 'weekday 1', ?) and date('now', 'weekday 0', ?)
         );'''
 
 YEAR_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))"
@@ -52,6 +52,7 @@ TOTAL_TIME_YEAR = '''
         FROM timer_data
         WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))
         );'''
+
 
 DAY_MAX = '''SELECT date, MAX(sum_time)
             FROM (
@@ -183,8 +184,8 @@ def past_weeks(connexion : Connection, number_of_weeks : int):
     with connexion :
         day_difference = 7
         for week_delta in list(range(1,number_of_weeks+1)):
-            (monday,sunday) = connexion.execute(DATES, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchone()
-            timer_per_task = connexion.execute(TOTAL_TIME_PARTICULAR_WEEK, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchall()
+            (monday,sunday) = connexion.execute(DATES, [f"-{day_difference * week_delta} days", f"-{day_difference * week_delta} days"]).fetchone()
+            timer_per_task = connexion.execute(TOTAL_TIME_PARTICULAR_WEEK, [f"-{day_difference * week_delta} days", f"-{day_difference * week_delta} days"]).fetchall()
             print(f"Week from Monday {monday} to Sunday {sunday} : \n\t Total time : {timer_per_task[0][0]}")
 
 if __name__ == '__main__':
@@ -192,9 +193,13 @@ if __name__ == '__main__':
     try:
         connexion = sqlite3.connect('timer_data.db')
         cursor = connexion.cursor()
-        all_time_avg = all_time_average_day(connexion)
-        this_year_avg = average_day_this_year(connexion)
-        last_year_avg = average_day_for_year(connexion, 2022)
-        print("done")
+        timers = connexion.execute('''SELECT * from timer_data WHERE date BETWEEN date('now', 'weekday 1', '-7 days') AND date('now', 'weekday 0', '-7 days')''').fetchall()
+
+        print(len(timers))
+        # Works
+        # timer_per_task = connexion.execute(TOTAL_TIME_PARTICULAR_WEEK, [f"-7 days", f"-7 days"]).fetchall()
+        # print(timer_per_task)
+        past_weeks(connexion, 5)
+        # print("done")
     except Exception as e :
         raise Exception(e)
