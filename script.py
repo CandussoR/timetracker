@@ -5,8 +5,16 @@ import sqlite_db as db
 import task_data
 import timer_data as data
 import timer_stats as stats
+import parse_conf as pc
+from subprocess import Popen
 
-MENU_PROMPT = '''\n
+# Conf
+CONF = pc.load_conf("conf.json")
+LOGS = CONF['log']
+
+# Prompt
+prompt_seven = "Deactivate logs," if LOGS else "Activate logs,"
+MENU_PROMPT = f'''\n
 Select an option :
     1) Start a timer,
     2) Take a break,
@@ -14,18 +22,22 @@ Select an option :
     4) See some stats,
     5) Insert old timer,
     6) Extend last timer to now,
-    7) Quit.\n
+    7) {prompt_seven},
+    8) Quit.\n
     '''
+
 
 def start():
     connexion = db.connect('timer_data.db')
     db.create_tables(connexion)
 
-    while (user_input := int(input(MENU_PROMPT))) != 7:
+    while (user_input := int(input(MENU_PROMPT))) != 8:
 
         if user_input == 1:
             try:
+                task_input = task_data.parse_input(task_input)
                 id = task_data.task_input_to_id(connexion)
+
                 t_minutes = int(input("How long ? > "))*60
                 input("Press key when ready.")
             except KeyboardInterrupt: 
@@ -35,6 +47,8 @@ def start():
             print("Good job!")
             data.update_row_at_ending(connexion, datetime.datetime.now())
             end_ring()
+            if LOGS:
+                print("Logs functionality will come.")
 
         elif user_input == 2:
             try:
@@ -75,8 +89,11 @@ def start():
             data.insert_old_timer(connexion, [id, date, time_beginning, time_ending])
 
         elif user_input == 6 :
-             data.update_row_at_ending(connexion, datetime.datetime.now())
-             print("Couldn't leave it huh ? Updated, boss.")
+            data.update_row_at_ending(connexion, datetime.datetime.now())
+            print("Couldn't leave it huh ? Updated, boss.")
+
+        elif user_input == 7 :
+            pc.switch_logs(CONF, "conf.json")
 
         else:
             print("Invalid input, enter a number between 1 and 7.") 

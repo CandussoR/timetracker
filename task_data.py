@@ -14,18 +14,15 @@ RETRIEVE_TUPLE_ID = 'SELECT id FROM tasks WHERE task_name=(?) AND subtask=(?);'
 
 
 def task_input_to_id(connexion):
-    input_task = task_string_input()
-    if re.search(r'\W', input_task):
-        input_task = parse_input(input_task)
-    else:
-        input_task = [input_task.title()]
+    task_input = task_string_input()
+    task_input = parse_input(task_input)
     try:
-        check_existence(connexion, *input_task)
+        check_existence(connexion, *task_input)
         print("The task exists. Getting it's id...")
     except:
         print("The task doesn't exist yet. Adding it...")
-        insert_new_task(connexion, *input_task)
-    return fetch_id(connexion, *input_task) 
+        insert_new_task(connexion, *task_input)
+    return fetch_id(connexion, *task_input) 
 
 def task_string_input():
     while True:
@@ -36,9 +33,12 @@ def task_string_input():
         except ValueError :
             return task_input
             
-def parse_input(task_input):
-    task, subtask = re.split('\W', task_input, 1)
-    return task.title(), subtask.title()
+def parse_input(task_input : str):
+    if re.search(r'\W', task_input):
+        task, subtask = re.split('\W', task_input, 1)
+        return task.title(), subtask.title()
+    else:
+        return [task_input.title()]
 
 def check_existence(connexion, *task):
     with connexion:
@@ -62,3 +62,12 @@ def fetch_id(connexion, *task):
         else:
             retrieved_id = connexion.execute(RETRIEVE_ID, [*task]).fetchone()
     return retrieved_id[0]
+
+if __name__ == '__main__':
+    import sqlite_db as db
+    connexion = db.connect('timer_data.db')
+
+    # print(parse_input("Code.Lecture"))
+    # print(parse_input("Code"))
+    task_input = task_input_to_id(connexion)
+    print(task_input)
