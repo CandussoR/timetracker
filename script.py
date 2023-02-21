@@ -6,7 +6,6 @@ import task_data
 import timer_data as data
 import timer_stats as stats
 import parse_conf as pc
-from subprocess import Popen
 
 # Conf
 CONF = pc.load_conf("conf.json")
@@ -35,9 +34,8 @@ def start():
 
         if user_input == 1:
             try:
-                task_input = task_data.parse_input(task_input)
-                id = task_data.task_input_to_id(connexion)
-
+                task_input = task_data.task_string_input()
+                (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
                 t_minutes = int(input("How long ? > "))*60
                 input("Press key when ready.")
             except KeyboardInterrupt: 
@@ -61,7 +59,8 @@ def start():
 
         elif user_input == 3:
             try:
-                id = task_data.task_input_to_id(connexion)
+                task_input = task_data.task_string_input()
+                (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
                 input("Press key when ready.")
             except KeyboardInterrupt:
                 continue
@@ -92,7 +91,7 @@ def start():
             data.update_row_at_ending(connexion, datetime.datetime.now())
             print("Couldn't leave it huh ? Updated, boss.")
 
-        elif user_input == 7 :
+        elif user_input == 7:
             pc.switch_logs(CONF, "conf.json")
 
         else:
