@@ -6,6 +6,7 @@ import task_data
 import timer_data as data
 import timer_stats as stats
 import parse_conf as pc
+import task_logs as tl
 
 # Conf
 CONF = pc.load_conf("conf.json")
@@ -46,6 +47,7 @@ def start():
             data.update_row_at_ending(connexion, datetime.datetime.now())
             end_ring()
             if LOGS:
+                tl.write_log(CONF["log_path"], task, subtask)
                 print("Logs functionality will come.")
 
         elif user_input == 2:
@@ -67,6 +69,9 @@ def start():
             data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
             clocks.stopwatch()
             data.update_row_at_ending(connexion, datetime.datetime.now())
+            end_ring()
+            if LOGS:
+                tl.write_log(CONF["log_path"], task, subtask)
 
         elif user_input == 4:
             try:
@@ -75,8 +80,8 @@ def start():
                 continue
             
         elif user_input == 5:
-            print("What task was it ?")
-            id = task_data.task_input_to_id(connexion)
+            task_input = task_data.task_string_input()
+            (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
 
             print("Date? (YYYY-MM-DD) > ", end="")
             date = input()
