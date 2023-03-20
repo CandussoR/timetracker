@@ -16,7 +16,7 @@ TOTAL_TIME_TODAY = '''SELECT time(sum(time_elapsed), 'unixepoch') FROM timer_dat
 
 WEEK_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(date) > date('now', 'weekday 0', '-7 days')"
 
-DATES = "SELECT date('now', 'weekday 1', ?), date('now', 'weekday 0', ?)"
+DATES = "SELECT date('now', 'localtime', 'weekday 1', ?), date('now', 'localtime', 'weekday 1', ?)"
 
 SELECT_WEEK_TIMERS = '''
         SELECT *
@@ -36,7 +36,7 @@ TOTAL_TIME_PARTICULAR_WEEK = '''
     FROM (
         SELECT sum(time_elapsed) as totsec
         FROM timer_data
-        WHERE date BETWEEN date('now', 'weekday 1', ?) and date('now', 'weekday 0', ?)
+        WHERE date BETWEEN date('now', 'localtime', 'weekday 1', ?) and date('now', 'localtime', 'weekday 0', ?)
         );'''
 
 YEAR_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))"
