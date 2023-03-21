@@ -36,7 +36,7 @@ TOTAL_TIME_PARTICULAR_WEEK = '''
     FROM (
         SELECT sum(time_elapsed) as totsec
         FROM timer_data
-        WHERE date BETWEEN date('now', 'localtime', 'weekday 1', ?) and date('now', 'localtime', 'weekday 0', ?)
+        WHERE date BETWEEN ? and ?
         );'''
 
 YEAR_COUNT = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))"
@@ -182,46 +182,41 @@ def all_task_streaks(connexion : Connection):
 
 def past_weeks(connexion : Connection, number_of_weeks : int):
     with connexion :
-        day_difference = 7
-        for week_delta in list(range(1,number_of_weeks+1)):
-            '''TODO: See if sunday must be handed a particular way, 
-            since at weekday 0, 'now' 'weekday 1' seems to become weekday 0 + 1, 
-            whereas weekday 0 is weekday 1 + 6 every other day
-            because date goes a date forward to the next date of said week.'''
-            # Did work but doesn't now : check in the future if week time is 00:00:00
-            (monday,sunday) = connexion.execute(DATES, [f"-{day_difference * week_delta} days", f"-{day_difference * week_delta} days"]).fetchone()
-            # Did work for a time, but doesn't now — calculates 13 days.
-            # (monday,sunday) = connexion.execute(DATES, [f"-{day_difference * week_delta} days", f"-{day_difference * (week_delta - 1)} days"]).fetchone()
-            # If this doesn't work at a time too, delete the last -1, or go back to day_difference * (week_delta - 1).
-            timer_per_task = connexion.execute(TOTAL_TIME_PARTICULAR_WEEK, [f"-{day_difference * week_delta} days", f"-{day_difference * week_delta} days"]).fetchall()
-            print(f"Week from Monday {monday} to Sunday {sunday} : \n\t Total time : {timer_per_task[0][0]}")
+        dates = calculate_past_weeks_dates(connexion, number_of_weeks)
 
+        for date in dates:
+            monday, sunday = date
+            timer_per_task = connexion.execute(TOTAL_TIME_PARTICULAR_WEEK, [monday, sunday]).fetchone()
+            print(f"Week from Monday {monday} to Sunday {sunday} : \n\t Total time : {timer_per_task[0]}")
+
+def calculate_past_weeks_dates(connexion : Connection, number_of_weeks : int):
+    # Getting the number of current day
+    sqlite_weekday = connexion.execute('''SELECT strftime('%w', 'now');''').fetchone()[0]
+    dates = []
+    day_difference = 7
+
+    # The date function will seek the next date for the weekday specified if it isn't passed,
+    # so we need to calculate for sunday, monday, and the others.
+    if int(sqlite_weekday) in range(2, 7):
+        for week_delta in list(range(2,number_of_weeks+2)):
+            dates.append(connexion.execute(DATES, [f"-{day_difference * week_delta} days", f"-{day_difference * (week_delta - 1)} days"]).fetchone())
+    elif sqlite_weekday == 1:
+        for week_delta in list(range(2,number_of_weeks+2)):
+            dates.append(connexion.execute(DATES, [f"-{day_difference * week_delta} days", f"-{day_difference * week_delta} days"]).fetchone())
+    elif sqlite_weekday == 0:
+        for week_delta in list(range(2,number_of_weeks+2)):
+            dates.append(connexion.execute(DATES, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchone())
+    
+    return dates
+  
 if __name__ == '__main__':
     import sqlite3
     try:
         connexion = sqlite3.connect('timer_data.db')
         cursor = connexion.cursor()
-        # timers = connexion.execute('''SELECT * from timer_data WHERE date BETWEEN date('now', 'weekday 1', '-7 days') AND date('now', 'weekday 0', '-7 days')''').fetchall()
 
-        # print(len(timers))
-        # # Works
-        # timer_per_task = connexion.execute(TOTAL_TIME_PARTICULAR_WEEK, [f"-7 days", f"-7 days"]).fetchall()
-        # print(timer_per_task)
         past_weeks(connexion, 5)
         print("done")
 
-    #     TOTAL_TIME_YESTERDAY = '''
-    # SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, (totsec % 86400) / 3600) as total
-    # FROM (
-    #     SELECT sum(time_elapsed) as totsec
-    #     FROM timer_data
-    #     WHERE date(date) = date('now', '-1 days')
-    #     );'''
-    #     YESTERDAY_ROWS = '''
-    #     SELECT *
-    #     FROM timer_data
-    #     WHERE date(date) = date('now', '-1 days');'''
-    #     yesterday = connexion.execute(YESTERDAY_ROWS).fetchall()
-    #     print(yesterday)
     except Exception as e :
         raise Exception(e)
