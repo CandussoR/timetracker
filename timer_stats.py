@@ -182,6 +182,7 @@ def all_task_streaks(connexion : Connection):
 
 def past_weeks(connexion : Connection, number_of_weeks : int):
     with connexion :
+        # Gets the dates of a certain number of weeks
         dates = calculate_past_weeks_dates(connexion, number_of_weeks)
 
         for date in dates:
@@ -191,20 +192,20 @@ def past_weeks(connexion : Connection, number_of_weeks : int):
 
 def calculate_past_weeks_dates(connexion : Connection, number_of_weeks : int):
     # Getting the number of current day
-    sqlite_weekday = connexion.execute('''SELECT strftime('%w', 'now');''').fetchone()[0]
+    sqlite_weekday = int(connexion.execute('''SELECT strftime('%w', 'now');''').fetchone()[0])
     dates = []
     day_difference = 7
 
     # The date function will seek the next date for the weekday specified if it isn't passed,
     # so we need to calculate for sunday, monday, and the others.
-    if int(sqlite_weekday) in range(2, 7):
-        for week_delta in list(range(2,number_of_weeks+2)):
+    if sqlite_weekday in range(2, 7):
+        for week_delta in list(range(1,number_of_weeks+1)):
             dates.append(connexion.execute(DATES, [f"-{day_difference * week_delta} days", f"-{day_difference * (week_delta - 1)} days"]).fetchone())
     elif sqlite_weekday == 1:
-        for week_delta in list(range(2,number_of_weeks+2)):
+        for week_delta in list(range(1,number_of_weeks+1)):
             dates.append(connexion.execute(DATES, [f"-{day_difference * week_delta} days", f"-{day_difference * week_delta} days"]).fetchone())
     elif sqlite_weekday == 0:
-        for week_delta in list(range(2,number_of_weeks+2)):
+        for week_delta in list(range(1,number_of_weeks+1)):
             dates.append(connexion.execute(DATES, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchone())
     
     return dates
