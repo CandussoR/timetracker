@@ -39,6 +39,6 @@ a week or the year.
   to your .bash_profile, and relaunch your terminal with `source .bash_profile`. Sometimes "python" won't work and you'll have to use "python3" instead, or "python3.11", or something else. It depends on your setup.  
   - On Windows, you can set a `doskey` in the command prompt :
   ```cmd
-  doskey timetracker=doskey timetracker=.python-venv\timetracker\Scripts\activate.bat $T cd code\timer_sans_classe $T python script.py
+  doskey timetracker=.python-venv\timetracker\Scripts\activate.bat $T cd code\timer_sans_classe $T python script.py
   ```
 - Note that there might be something better to do, but this will be good enough to play with it.
