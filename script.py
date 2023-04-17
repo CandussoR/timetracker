@@ -7,6 +7,8 @@ import timer_data as data
 import timer_stats as stats
 import parse_conf as pc
 import task_logs as tl
+import winsound
+import platform
 
 # Conf
 CONF = pc.load_conf("conf.json")
@@ -69,7 +71,7 @@ def start():
             data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
             clocks.stopwatch()
             data.update_row_at_ending(connexion, datetime.datetime.now())
-            end_ring()
+            # end_ring()
             if LOGS:
                 tl.write_log(CONF["log_path"], task, subtask)
 

@@ -2,6 +2,7 @@ import parse_conf as pc
 import os
 import datetime
 from subprocess import Popen, call
+import platform
 
 def write_log(file_path : str, task : str, subtask : str = "") :
 
@@ -9,6 +10,8 @@ def write_log(file_path : str, task : str, subtask : str = "") :
         raise Exception("Path must point to a directory.")
 
     log_file_path = os.path.join(file_path, str(datetime.datetime.now().year), f"{task.replace(' ', '')}.md")
+    if platform.system() == "Windows":
+        log_file_path = log_file_path.replace("\\", "/")
 
     # Prepared strings
     title = f"# {task}  \n\n"
@@ -18,9 +21,6 @@ def write_log(file_path : str, task : str, subtask : str = "") :
     if not os.path.isfile(log_file_path):
         # Shell command : the file will be created if it doesn't exist yet.
         call(f'''echo "{title + date_line + subtask_string}" >> {log_file_path}''', shell=True)
-
-    # Checks if file exists, and if not
-    # os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
 
     with open(log_file_path, 'r', encoding="UTF-8", newline="") as fr:
         with open(log_file_path, 'a+', encoding="ISO-8859-1", newline="") as fw:
