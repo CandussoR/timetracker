@@ -5,7 +5,7 @@ def load_conf(conf_file : str) -> dict:
         return json.load(fr)
 
 def switch_logs(conf : dict, conf_file : str) -> dict:
-    conf['log'] = not conf['logs']
+    conf['logs'] = not conf['logs']
     write_conf(conf, conf_file)
     return conf['logs']
 
