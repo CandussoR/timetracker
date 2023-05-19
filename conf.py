@@ -5,9 +5,9 @@ def load_conf(conf_file : str) -> dict:
         return json.load(fr)
 
 def switch_logs(conf : dict, conf_file : str) -> dict:
-    conf['log'] = not conf['log']
+    conf['log'] = not conf['logs']
     write_conf(conf, conf_file)
-    return conf['log']
+    return conf['logs']
 
 def write_conf(conf: dict, conf_file : str):
     with open(conf_file, 'w') as fw:

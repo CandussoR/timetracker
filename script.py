@@ -5,17 +5,16 @@ import sqlite_db as db
 import task_data
 import timer_data as data
 import timer_stats as stats
-import parse_conf as pc
+import conf as c
 import task_logs as tl
-import winsound
 import platform
 
 # Conf
-CONF = pc.load_conf("conf.json")
-LOGS = CONF['log']
+CONF = c.load_conf("conf.json")
+LOGS = CONF['logs']
 
 # Prompt
-prompt_seven = "Deactivate logs," if LOGS else "Activate logs,"
+prompt_seven = "Deactivate logs" if LOGS else "Activate logs"
 MENU_PROMPT = f'''\n
 Select an option :
     1) Start a timer,
@@ -50,7 +49,6 @@ def start():
             end_ring()
             if LOGS:
                 tl.write_log(CONF["log_path"], task, subtask)
-                print("Logs functionality will come.")
 
         elif user_input == 2:
             try:
@@ -99,13 +97,13 @@ def start():
             print("Couldn't leave it huh ? Updated, boss.")
 
         elif user_input == 7:
-            pc.switch_logs(CONF, "conf.json")
+            c.switch_logs(CONF, "conf.json")
 
         else:
             print("Invalid input, enter a number between 1 and 7.") 
 
 def end_ring():
-    playsound('Flow.mp3')
+    playsound('timer_end.mp3')
 
 
 if __name__ == '__main__':
