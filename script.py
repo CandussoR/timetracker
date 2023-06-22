@@ -12,7 +12,7 @@ import platform
 
 # Conf
 CONF = pc.load_conf("conf.json")
-LOGS = CONF['log']
+LOGS = CONF['logs']
 
 # Prompt
 prompt_seven = "Deactivate logs," if LOGS else "Activate logs,"
@@ -30,7 +30,7 @@ Select an option :
 
 
 def start():
-    connexion = db.connect('timer_data.db')
+    connexion = db.connect(CONF["database"])
     db.create_tables(connexion)
 
     while (user_input := int(input(MENU_PROMPT))) != 8:
