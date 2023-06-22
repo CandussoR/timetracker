@@ -9,6 +9,7 @@ import parse_conf as pc
 import task_logs as tl
 import winsound
 import platform
+import input_handlers as handle
 
 # Conf
 CONF = pc.load_conf("conf.json")
@@ -27,7 +28,6 @@ Select an option :
     7) {prompt_seven},
     8) Quit.\n
     '''
-
 
 def start():
     connexion = db.connect('timer_data.db')
@@ -82,17 +82,8 @@ def start():
                 continue
             
         elif user_input == 5:
-            task_input = task_data.task_string_input()
-            (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
-
-            print("Date? (YYYY-MM-DD) > ", end="")
-            date = input()
-
-            time_beginning = input("Beginning ? (HH:MM:SS) \n> ")
-
-            time_ending = input("Ending ? (HH:MM:SS) \n> ")
-
-            data.insert_old_timer(connexion, [id, date, time_beginning, time_ending])
+            rank_data = handle.old_timer_input()
+            data.insert_old_timer(connexion, rank_data)
 
         elif user_input == 6 :
             data.update_row_at_ending(connexion, datetime.datetime.now())
