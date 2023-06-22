@@ -27,8 +27,7 @@ INSERT_PAST_TIMER = '''INSERT INTO timer_data (task_id, date, time_beginning, ti
 
 def insert_beginning(connexion : Connection, task_at_hand_id, date, beginning_time):
     with connexion:
-        connexion.execute(INSERT_TIMER_BEGINNING, (task_at_hand_id, date,\
-                                beginning_time))
+        connexion.execute(INSERT_TIMER_BEGINNING, (task_at_hand_id, date, beginning_time))
 
 def insert_old_timer(connexion : Connection, params):
     with connexion:

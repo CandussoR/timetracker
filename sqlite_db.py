@@ -26,5 +26,5 @@ def connect(db):
 
 def create_tables(connexion):
     with connexion:
-        connexion.execute(CREATE_TIMER_TABLE)
         connexion.execute(CREATE_TASK_TABLE)
+        connexion.execute(CREATE_TIMER_TABLE)
