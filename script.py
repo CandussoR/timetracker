@@ -105,7 +105,7 @@ def start():
             print("Invalid input, enter a number between 1 and 7.") 
 
 def end_ring():
-    playsound('Flow.mp3')
+    playsound(CONF["timer_sound_path"])
 
 
 if __name__ == '__main__':
