@@ -29,7 +29,7 @@ Select an option :
 
 
 def start():
-    connexion = db.connect('timer_data.db')
+    connexion = db.connect(CONF["database"])
     db.create_tables(connexion)
 
     while (user_input := int(input(MENU_PROMPT))) != 8:
@@ -103,7 +103,7 @@ def start():
             print("Invalid input, enter a number between 1 and 7.") 
 
 def end_ring():
-    playsound('timer_end.mp3')
+    playsound(CONF["timer_sound_path"])
 
 
 if __name__ == '__main__':
