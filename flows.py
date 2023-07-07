@@ -1,8 +1,13 @@
-from conf import load_conf, write_conf
+from conf import Config
 
 class Flow:
-    def __init__(self, name: str | None = None, timers: list[int] | None = None, pauses: list[int] | None = None):
+    def __init__(self,
+                 name: str | None = None,
+                 timers: list[int] | None = None,
+                 pauses: list[int] | None = None):
+        
         self.name = self._input_flow_name() if name is None else name
+
         if timers is None or pauses is None :
             self.timers, self.pauses = self._timers_and_pauses(self._input_flow_times())
         else :
@@ -30,25 +35,14 @@ class Flow:
         pauses = [int(item[1]) for item in timers_and_pauses]
         return timers, pauses
 
-    def add_flow(self, conf: dict):
-        conf['flows'] = {self.name : {"timers" : self.timers, "pauses" : self.pauses}}
-        write_conf(conf, "conf.json")
+    def to_dict(self) -> dict[str, dict[str, list[int]]]:
+        return {"timers" : self.timers, "pauses" : self.pauses}
 
-    def delete_flow(self, conf : str, flow_name : str):
-        flows = load_conf(conf)['flows']
-
-        if flow_name in flows:
-            flows.pop(flow_name)
-
-        if flow_name not in flows :
-            print("The flow doesn't exist.")
-
-    def modify_flow(self):
-        pass
-
-    def execute_flow(self):
-        pass
+    def add_to(self, conf: Config):
+        conf.flows[self.name] = self.to_dict()
+        conf.modify_conf()
 
 if __name__ == '__main__':
-    # flow = Flow().add_flow(load_conf("conf.json"))
-    pass
+    conf = Config("conf_copy.json")
+    flow = Flow()
+    flow.add_to(conf)
