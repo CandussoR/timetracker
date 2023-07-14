@@ -1,23 +1,25 @@
 import json
 
-def load_conf(conf_file : str) -> dict:
-    with open(conf_file, 'r') as fr:
-        return json.load(fr)
+class Config:
 
-def switch_logs(conf : dict, conf_file : str) -> dict:
-    conf['logs'] = not conf['logs']
-    write_conf(conf, conf_file)
-    return conf['logs']
+    filepath = "./conf.json"
 
-def write_conf(conf: dict, conf_file : str):
-    with open(conf_file, 'w') as fw:
-        json.dump(conf, fw)
+    def __init__(self):
+        conf = self._load_conf()
+        self.bdd = conf["database"]
+        self.logs = conf["logs"]
+        self.sound = conf["timer_sound_path"]
+        self.flows = conf["flows"]
 
-# Lire le fichier pour voir les logs
-# Créer une fonction pour parser le fichier et export une variable logs
-# Utiliser la variable logs dans le script,
-# Créer une entrée dans le prompt permettant de modifier ou non les logs.
+    def _load_conf(self) -> dict:
+        with open(self.filepath, 'r') as fr:
+            return json.load(fr)
+
+    def modify_conf(self):
+        conf = {k : self.__dict__[k] for k in self.__dict__ if k is not "filepath"}
+        with open(self.filepath, 'w') as fw:
+            json.dump(conf, fw)
 
 if __name__ == '__main__':
-    conf = load_conf("conf.json")
-    switch_logs(conf, "conf.json")
+    conf = Config()
+    print(1)
