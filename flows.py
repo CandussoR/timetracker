@@ -42,7 +42,58 @@ class Flow:
         conf.flows[self.name] = self.to_dict()
         conf.modify_conf()
 
+class FlowCollection :
+
+    def __init__(self,
+               collection : dict[str, dict[str, list[int]]]):
+        
+        for name, info in collection.items():
+            self.__setattr__(name, 
+                             Flow(name, 
+                                  info["timers"], 
+                                  info["pauses"]))
+
+
+    def add(self) :
+
+        flow = Flow()
+
+        self.__setattr__(flow.name, flow)
+
+
+    def delete(self, name : str):
+        try:
+            self.__delattr__(name)
+        except AttributeError as e:
+            raise e
+        except Exception:
+            raise Exception
+    
+
+    def to_dict(self) -> dict[str, dict[str, list[int]]]:
+        collection_dict = {}
+
+        for name, info in self.__dict__.items():
+            collection_dict[name] = { "timers" : info.timers, "pauses": info.pauses}
+        
+        return collection_dict
+    
+
+    def write(self, conf: Config) :
+
+        conf.flows = self.to_dict()
+
+        conf.modify()
+
 if __name__ == '__main__':
-    conf = Config("conf_copy.json")
-    flow = Flow()
-    flow.add_to(conf)
+    conf = Config()
+    collection = FlowCollection(conf.flows)
+    collection.add()
+    collection.write(conf)
+    try:
+        collection.delete("Acsendant")
+    except AttributeError as e:
+        collection.delete("Ascendant")
+        collection.write(conf)
+    except Exception:
+        print(Exception)
