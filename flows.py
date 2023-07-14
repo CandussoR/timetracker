@@ -35,13 +35,6 @@ class Flow:
         pauses = [int(item[1]) for item in timers_and_pauses]
         return timers, pauses
 
-    def to_dict(self) -> dict[str, dict[str, list[int]]]:
-        return {"timers" : self.timers, "pauses" : self.pauses}
-
-    def add_to(self, conf: Config):
-        conf.flows[self.name] = self.to_dict()
-        conf.modify_conf()
-
 class FlowCollection :
 
     def __init__(self,
