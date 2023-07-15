@@ -37,10 +37,11 @@ class Flow:
 
 class FlowCollection :
 
-    def __init__(self,
-               collection : dict[str, dict[str, list[int]]]):
+    conf : Config = Config()
+
+    def __init__(self):
         
-        for name, info in collection.items():
+        for name, info in self.conf.flows.items():
             self.__setattr__(name, 
                              Flow(name, 
                                   info["timers"], 
@@ -64,6 +65,7 @@ class FlowCollection :
     
 
     def to_dict(self) -> dict[str, dict[str, list[int]]]:
+        
         collection_dict = {}
 
         for name, info in self.__dict__.items():
@@ -72,21 +74,21 @@ class FlowCollection :
         return collection_dict
     
 
-    def write(self, conf: Config) :
+    def write(self) :
 
-        conf.flows = self.to_dict()
+        self.conf.flows = self.to_dict()
 
-        conf.modify()
+        self.conf.modify()
 
 if __name__ == '__main__':
     conf = Config()
-    collection = FlowCollection(conf.flows)
-    collection.add()
-    collection.write(conf)
+    collection = FlowCollection()
+    # collection.add()
+    # collection.write()
     try:
         collection.delete("Acsendant")
     except AttributeError as e:
         collection.delete("Ascendant")
-        collection.write(conf)
+        collection.write()
     except Exception:
         print(Exception)
