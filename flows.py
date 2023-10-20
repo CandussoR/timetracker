@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from conf import Config
 
 class Flow:
@@ -6,6 +7,7 @@ class Flow:
                  timers: list[int] | None = None,
                  pauses: list[int] | None = None):
         
+
         self.name = self._input_flow_name() if name is None else name
 
         if timers is None or pauses is None :
@@ -39,26 +41,18 @@ class FlowCollection :
 
     conf : Config = Config()
 
-    def __init__(self):
+    def __init__(self, conf : Config):
+        self.flows = conf.flows
         
-        for name, info in self.conf.flows.items():
-            self.__setattr__(name, 
-                             Flow(name, 
-                                  info["timers"], 
-                                  info["pauses"]))
-
-
     def add(self) :
-
         flow = Flow()
-
-        self.__setattr__(flow.name, flow)
-
+        self.flows.append( {flow.name : { "timers" : flow.timers, "pauses" : flow.pauses }} )
 
     def delete(self, name : str):
         try:
-            self.__delattr__(name)
-        except AttributeError as e:
+            # self.__delattr__(name)
+            self.flows.pop(name)
+        except KeyError as e:
             raise e
         except Exception:
             raise Exception
@@ -68,11 +62,9 @@ class FlowCollection :
         
         collection_dict = {}
 
-        for name, info in self.__dict__.items():
-            collection_dict[name] = { "timers" : info.timers, "pauses": info.pauses}
-        
+        for flow, sets in self.flows.items():
+            collection_dict[flow] = { "timers" : sets["timers"], "pauses": sets["pauses"]}
         return collection_dict
-    
 
     def write(self) :
 
@@ -82,12 +74,15 @@ class FlowCollection :
 
 if __name__ == '__main__':
     conf = Config()
-    collection = FlowCollection()
+    collection = FlowCollection(conf)
+    # for flow, sets in collection.items():
+    #     print(flow, sets)
+        
     # collection.add()
     # collection.write()
     try:
         collection.delete("Acsendant")
-    except AttributeError as e:
+    except KeyError as e:
         collection.delete("Ascendant")
         collection.write()
     except Exception:
