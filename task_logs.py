@@ -1,4 +1,3 @@
-import parse_conf as pc
 import os
 import datetime
 from subprocess import Popen, call
@@ -39,7 +38,8 @@ def write_log(file_path : str, task : str, subtask : str = "") :
             else :
                 fw.write(date_line + subtask_string) if subtask else fw.write(date_line)
 
-    Popen(['open', log_file_path])
+    # Popen(['open', log_file_path])
+    os.startfile(log_file_path)
 
 if __name__ == "__main__":
     import json

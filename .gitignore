@@ -6,3 +6,5 @@ __pycache__/
 timer_data.db
 .vscode/
 conf.json
+todo.md
+*.mp3
