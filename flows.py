@@ -1,31 +1,56 @@
-from dataclasses import dataclass
 from conf import Config
 
 class Flow:
-    def __init__(self,
-                 name: str | None = None,
-                 timers: list[int] | None = None,
-                 pauses: list[int] | None = None):
+    def __init__(self, name: str , timers: list[int], pauses: list[int]):     
+        self.name = name
+        self.timers = timers
+        self.pauses = pauses
+    
+    def __repr__(self) -> str:
+        return f"{self.name} : {self.get_sets()}"
+    
+    def get_sets(self) -> list[tuple[int, int]]:
+        return list(zip(self.timers, self.pauses))
+    
+    def to_dict(self) -> dict:
+        return { self.name : {"timers": self.timers, "pauses" : self.pauses} }
+    
+class FlowBuilder:
+    def __init__(self):
+        self.name = None
+        self.timers = None
+        self.pauses = None
+
+    def with_name(self, name : str):
+        self.name = name
+        return self
+    
+    def with_timers(self, timers : list[int]):
+        self.timers = timers
+        return self
+    
+    def with_pauses(self, pauses : list[int]):
+        self.pauses = pauses
+        return self
+    
+    def build(self) -> Flow:
+        return Flow(self.name, self.timers, self.pauses)
+
+class CommandLineFlowBuilder:
+    ''' A interactive builder of Flow for the command line. '''
+
+    def __init__(self):
+        self.name = self._input_flo_name()
+        self.timers, self.pauses = self._timers_and_pauses(self._input_flow_times())
         
-
-        self.name = self._input_flow_name() if name is None else name
-
-        if timers is None or pauses is None :
-            self.timers, self.pauses = self._timers_and_pauses(self._input_flow_times())
-        else :
-            self.timers, self.pauses = (timers, pauses)
-
     def _input_flow_times(self) -> list[list[str]]:
         ''' Asking user input for time and pauses. Function abstracted for separation purpose.
             Returns a list of a timer and a pause for each couple specified. '''
         timers_and_pauses = []
-
         while True:
             timer_pause = input("Enter a timer and a pause in the form timer/pause.\n> ")
-
             if not timer_pause :
                 return timers_and_pauses
-
             timers_and_pauses.append(timer_pause.split('/'))
 
     def _input_flow_name(self) -> str :
@@ -36,54 +61,55 @@ class Flow:
         timers = [int(item[0]) for item in timers_and_pauses]
         pauses = [int(item[1]) for item in timers_and_pauses]
         return timers, pauses
+    
+    def build(self) -> Flow:
+        return Flow(self.name, self.timers, self.pauses)
 
 class FlowCollection :
-
-    conf : Config = Config()
-
+    '''List of flows used to both present the flows to a user and allow a user to manipulate them.'''
     def __init__(self, conf : Config):
-        self.flows = conf.flows
-        
-    def add(self) :
-        flow = Flow()
-        self.flows.append( {flow.name : { "timers" : flow.timers, "pauses" : flow.pauses }} )
+        self.conf = conf
+        self.flows = self.__load(conf.flows)
 
-    def delete(self, name : str):
+    def __load(self, flows : list[dict[str, dict]]):
+        loaded = []
+
+        for flow in flows:
+            for key, value in flow.items():
+                builder = FlowBuilder()
+                obj = builder.with_name(key).with_timers(value["timers"]).with_pauses(value["pauses"]).build()
+                loaded.append(obj)
+
+        return loaded
+
+    def add(self) :
+        flow = CommandLineFlowBuilder()
+        self.flows.append( flow.to_dict() )
+
+    def delete(self, index : int):
         try:
-            # self.__delattr__(name)
-            self.flows.pop(name)
+            self.flows.pop(index)
+            self.write()
         except KeyError as e:
             raise e
-        except Exception:
-            raise Exception
-    
-
-    def to_dict(self) -> dict[str, dict[str, list[int]]]:
-        
-        collection_dict = {}
-
-        for flow, sets in self.flows.items():
-            collection_dict[flow] = { "timers" : sets["timers"], "pauses": sets["pauses"]}
-        return collection_dict
+        except Exception as e:
+            raise Exception(e)
 
     def write(self) :
-
-        self.conf.flows = self.to_dict()
-
         self.conf.modify()
 
 if __name__ == '__main__':
     conf = Config()
     collection = FlowCollection(conf)
-    # for flow, sets in collection.items():
-    #     print(flow, sets)
+    for i, flow in enumerate(collection.flows):
+        print(i,flow)
         
     # collection.add()
     # collection.write()
     try:
-        collection.delete("Acsendant")
+        collection.delete(3)
     except KeyError as e:
         collection.delete("Ascendant")
         collection.write()
-    except Exception:
-        print(Exception)
+    except Exception as e:
+        print(Exception(e))

@@ -1,63 +1,52 @@
 import datetime
+from sqlite3 import Connection
 import clocks
 from playsound import playsound
+from flows import FlowCollection, Flow
 import sqlite_db as db
 import task_data
 import timer_data as data
 import timer_stats as stats
-import conf as c
+from conf import Config
 import task_logs as tl
-import platform
 
 # Conf
-CONF = c.load_conf("conf.json")
-LOGS = CONF['logs']
+# CONF = c.load_conf("conf.json")
+CONF = Config()
+LOGS = CONF.logs
 
 # Prompt
-prompt_seven = "Deactivate logs" if LOGS else "Activate logs"
 MENU_PROMPT = f'''\n
 Select an option :
     1) Start a timer,
     2) Take a break,
     3) Start a stopwatch,
-    4) See some stats,
-    5) Insert old timer,
-    6) Extend last timer to now,
-    7) {prompt_seven},
-    8) Quit.\n
+    4) Launch a Flow
+    5) See some stats,
+    6) Insert old timer,
+    7) Extend last timer to now,
+    8) Settings,
+    9) Quit.\n
     '''
 
 
 def start():
-    connexion = db.connect(CONF["database"])
+    connexion = db.connect(CONF.database)
     db.create_tables(connexion)
 
     while (user_input := int(input(MENU_PROMPT))) != 8:
 
         if user_input == 1:
             try:
-                task_input = task_data.task_string_input()
-                (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
-                t_minutes = int(input("How long ? > "))*60
-                input("Press key when ready.")
-            except KeyboardInterrupt: 
-                continue
-            data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
-            clocks.timer(t_minutes)
-            print("Good job!")
-            data.update_row_at_ending(connexion, datetime.datetime.now())
-            end_ring()
-            if LOGS:
-                tl.write_log(CONF["log_path"], task, subtask)
-
-        elif user_input == 2:
-            try:
-                pause = int(input("How long ? > "))*60
+                launch_timer(connexion)
             except KeyboardInterrupt:
                 continue
-            clocks.timer(pause)
-            print("Back at it!")
-            end_ring()
+
+        elif user_input == 2:
+            try :
+                launch_pause()
+            except KeyboardInterrupt:
+                continue
 
         elif user_input == 3:
             try:
@@ -69,17 +58,35 @@ def start():
             data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
             clocks.stopwatch()
             data.update_row_at_ending(connexion, datetime.datetime.now())
-            # end_ring()
+            end_ring()
             if LOGS:
-                tl.write_log(CONF["log_path"], task, subtask)
+                tl.write_log(CONF.log_path, task, subtask)
 
         elif user_input == 4:
+            try:
+                collection = FlowCollection(CONF)
+                for i, flow in enumerate(collection.flows):
+                    sets = flow.get_sets()
+                    sets = [str(set) for set in sets]
+                    print(f"    {i+1}) {flow.name} ;")
+                    print(f"\t{len(sets)} sets : {', '.join(sets)}")
+                flow_number = int(input("    Which flow do you want to launch ?\r\n    > "))
+
+                for i, set in enumerate(collection.flows[flow_number - 1].get_sets()):
+                    number_of_sets = len(sets)
+                    print(f"    SET N°{i+1}/{number_of_sets}")
+                    launch_timer(connexion, set[0])
+                    launch_pause(set[1])
+            except KeyboardInterrupt as e:
+                continue
+
+        elif user_input == 5:
             try:
                 stats.display_stats(connexion)
             except KeyboardInterrupt:
                 continue
             
-        elif user_input == 5:
+        elif user_input == 6:
             task_input = task_data.task_string_input()
             (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
 
@@ -92,19 +99,45 @@ def start():
 
             data.insert_old_timer(connexion, [id, date, time_beginning, time_ending])
 
-        elif user_input == 6 :
+        elif user_input == 7:
             data.update_row_at_ending(connexion, datetime.datetime.now())
             print("Couldn't leave it huh ? Updated, boss.")
 
-        elif user_input == 7:
-            c.switch_logs(CONF, "conf.json")
+        elif user_input == 8:
+            print("Not implemented. Logs, flows, etc. Probably only in GUI.")
 
         else:
-            print("Invalid input, enter a number between 1 and 7.") 
+            print("Invalid input, enter a number between 1 and 9.") 
+
+def launch_timer(connexion : Connection, time_in_minutes : int | None = None):
+    try:
+        task_input = task_data.task_string_input()
+        (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
+        if not time_in_minutes:
+            time_in_minutes = int(input("How long ? > "))*60
+        input("Press key when ready.")
+    except KeyboardInterrupt: 
+        raise KeyboardInterrupt
+    data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
+    clocks.timer(time_in_minutes)
+    print("Good job!")
+    data.update_row_at_ending(connexion, datetime.datetime.now())
+    end_ring()
+    if LOGS:
+        tl.write_log(CONF.log_path, task, subtask)
+
+def launch_pause(time_in_minutes : int | None):
+    try:
+        if not time_in_minutes :
+            time_in_minutes = int(input("How long ? > "))*60
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
+    clocks.timer(time_in_minutes)
+    print("Back at it!")
+    end_ring()
 
 def end_ring():
-    playsound(CONF["timer_sound_path"])
-
+    playsound(CONF.timer_sound_path)
 
 if __name__ == '__main__':
     start()
