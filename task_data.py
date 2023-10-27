@@ -1,5 +1,6 @@
 import re
 from sqlite3 import Connection
+
 CHECK_TASK_EXISTENCE = 'SELECT id FROM tasks WHERE task_name=(?);'
 
 INSERT_NEW_TASK = 'INSERT INTO tasks (task_name) VALUES (?);'
