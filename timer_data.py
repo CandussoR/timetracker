@@ -1,10 +1,15 @@
+from datetime import datetime
 from sqlite3.dbapi2 import Connection
 
 INSERT_TIMER_BEGINNING = '''INSERT INTO timer_data (task_id, date, time_beginning) 
                             VALUES (?,date(?),time(?));'''
 
 UPDATE_TIMER_ENDING = '''UPDATE timer_data 
-                        SET time_ending=(time(?)) 
+                        SET time_ending=(time(?))
+                        WHERE id = (?);'''
+
+UPDATE_TIMER_ENDING_AND_LOG = '''UPDATE timer_data 
+                        SET time_ending=(time(?)) AND log=(?)
                         WHERE id = (?);'''
 
 LAST_ID = 'SELECT id FROM timer_data ORDER BY id DESC LIMIT 1;'
@@ -36,15 +41,22 @@ def insert_old_timer(connexion : Connection, params):
     last_id = connexion.execute(LAST_ID).fetchone()[0] 
     update_time_elapsed(connexion, last_id)
 
-def update_row_at_ending(connexion : Connection, time):
-    last_id = connexion.execute(LAST_ID).fetchone()[0] 
-    add_time_ending(connexion, time, last_id)
+def update_row_at_ending(connexion : Connection, time : datetime, log : str = ""):
+    last_id = connexion.execute(LAST_ID).fetchone()[0]
+    if log == "":
+        add_time_ending(connexion, time, last_id)
+    else :
+        update_time_and_log(connexion, time, log, id)
     update_time_elapsed(connexion, last_id)
 
 def update_time_elapsed(connexion : Connection, id : int):
     add_elapsed_time(connexion, id)
     if time_elapsed_is_negative(connexion) :
         add_day_to_time_elapsed(connexion)
+
+def update_time_and_log(connexion, time, log, id):
+    with connexion:
+        connexion.execute(UPDATE_TIMER_ENDING_AND_LOG, [time, log, id])
 
 def add_time_ending(connexion : Connection, time_ending, id):
     with connexion:

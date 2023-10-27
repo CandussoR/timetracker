@@ -1,0 +1,9 @@
+CHECK_TASK_EXISTENCE = 'SELECT id FROM tags WHERE tag=(?);'
+
+INSERT_NEW_TASK = 'INSERT INTO tags (tag) VALUES (?);'
+
+RETRIEVE_RANK ='SELECT * FROM tags WHERE tag=(?);'
+
+DELETE_RANK = 'DELETE FROM tags WHERE id=(?)'
+
+UPDATE_RANK = 'UPDATE tags SET tag=(?) WHERE id=(?)'
