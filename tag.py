@@ -3,7 +3,7 @@ from sqlite3 import Connection
 
 CHECK_TASK_EXISTENCE = 'SELECT id FROM tags WHERE tag=(?);'
 
-INSERT_NEW_TASK = 'INSERT INTO tags (tag) VALUES (?);'
+INSERT_NEW_TAG = 'INSERT INTO tags (tag) VALUES (?) RETURNING id;'
 
 RETRIEVE_RANK ='SELECT * FROM tags WHERE tag=(?);'
 
@@ -11,13 +11,26 @@ DELETE_RANK = 'DELETE FROM tags WHERE id=(?)'
 
 UPDATE_RANK = 'UPDATE tags SET tag=(?) WHERE id=(?)'
 
-def ask_input(connexion : Connection):
-    tag_input = parse_input(tag_input)
+def ask_input() -> str:
+    while True:
+        try:
+            tag_input = input("Enter a tag. > ")
+            if int(tag_input):
+                print("Tag must be a string.")
+        except ValueError :
+            return tag_input
+
+def retrieve_tag_id(connexion : Connection, tag : str) -> int:
     try:
-        check_existence(connexion, *tag_input)
-        print("The tag exists. Getting it's id...")
-    except:
+        return check_id_existence(connexion, tag)[0]
+    except TypeError:
         print("The tag doesn't exist yet. Adding it...")
-        insert_new_tag(connexion, *tag_input)
-    # return fetch_id(connexion, *task_input)
-    return fetch_tag_rank(connexion, *tag_input)
+        return insert_new_tag_return_id(connexion, tag)
+
+def check_id_existence(connexion, tag : str):
+    with connexion:
+        return connexion.execute(CHECK_TASK_EXISTENCE, [tag]).fetchone()
+
+def insert_new_tag_return_id(connexion : Connection, tag : str) -> int:
+    with connexion :
+        return connexion.execute(INSERT_NEW_TAG, [tag]).lastrowid
