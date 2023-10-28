@@ -9,6 +9,7 @@ import timer_data as data
 import timer_stats as stats
 from conf import Config
 import task_logs as tl
+import tag
 
 # Conf
 # CONF = c.load_conf("conf.json")
@@ -31,7 +32,8 @@ Select an option :
 
 
 def start():
-    connexion = db.connect(CONF.database)
+    # connexion = db.connect(CONF.database)
+    connexion = db.connect("db_test.db")
     db.create_tables(connexion)
 
     while (user_input := int(input(MENU_PROMPT))) != 8:
@@ -49,18 +51,24 @@ def start():
                 continue
 
         elif user_input == 3:
+            tag_id = None
             try:
                 task_input = task_data.task_string_input()
                 (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
+                tag_input = tag.ask_input()
+                if tag_input:
+                    tag_id = tag.retrieve_tag_id(connexion, tag_input)
                 input("Press key when ready.")
             except KeyboardInterrupt:
                 continue
-            data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
+            last_id = data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now(), tag_id)
             clocks.stopwatch()
-            data.update_row_at_ending(connexion, datetime.datetime.now())
+            end_time = datetime.datetime.now()
             end_ring()
-            if LOGS:
-                tl.write_log(CONF.log_path, task, subtask)
+            log = enter_log()
+            data.update_row_at_ending(connexion, last_id, end_time, log)
+            # if LOGS:
+            #     tl.write_log(CONF.log_path, task, subtask)
 
         elif user_input == 4:
             try:
@@ -87,17 +95,21 @@ def start():
                 continue
             
         elif user_input == 6:
-            task_input = task_data.task_string_input()
-            (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
+                tag_id = None
 
-            print("Date? (YYYY-MM-DD) > ", end="")
-            date = input()
+                task_input = task_data.task_string_input()
+                (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
+                tag_input = tag.ask_input()
+                if tag_input:
+                    tag_id = tag.retrieve_tag_id(connexion, tag_input)
+                date = input("Date? (YYYY-MM-DD) > ")
 
-            time_beginning = input("Beginning ? (HH:MM:SS) \n> ")
+                time_beginning = input("Beginning ? (HH:MM:SS) \n> ")
 
-            time_ending = input("Ending ? (HH:MM:SS) \n> ")
+                time_ending = input("Ending ? (HH:MM:SS) \n> ")
 
-            data.insert_old_timer(connexion, [id, date, time_beginning, time_ending])
+                log = enter_log()
+                data.insert_old_timer(connexion, id, date, time_beginning, time_ending, tag_id, log)
 
         elif user_input == 7:
             data.update_row_at_ending(connexion, datetime.datetime.now())
@@ -110,21 +122,29 @@ def start():
             print("Invalid input, enter a number between 1 and 9.") 
 
 def launch_timer(connexion : Connection, time_in_minutes : int | None = None):
+    tag_id = None
+
     try:
         task_input = task_data.task_string_input()
         (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
+        tag_input = tag.ask_input()
+        if tag_input:
+            tag_id = tag.retrieve_tag_id(connexion, tag_input)
         if not time_in_minutes:
             time_in_minutes = int(input("How long ? > "))*60
         input("Press key when ready.")
     except KeyboardInterrupt: 
         raise KeyboardInterrupt
-    data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now())
+    
+    row_id = data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now(), tag_id)
     clocks.timer(time_in_minutes)
+    end_time = datetime.datetime.now()
     print("Good job!")
-    data.update_row_at_ending(connexion, datetime.datetime.now())
     end_ring()
-    if LOGS:
-        tl.write_log(CONF.log_path, task, subtask)
+    log = enter_log()
+    data.update_row_at_ending(connexion, row_id, end_time, log)
+    # if LOGS:
+    #     tl.write_log(CONF.log_path, task, subtask)
 
 def launch_pause(time_in_minutes : int | None):
     try:
@@ -138,6 +158,21 @@ def launch_pause(time_in_minutes : int | None):
 
 def end_ring():
     playsound(CONF.timer_sound_path)
+
+def enter_log() -> str:
+    log = ""
+    
+    print("    Enter your log:")
+    while True:
+        piece = input("    > ")
+
+        if piece == "":
+            return log
+        if piece != "" and log == "":
+            log += piece
+        else:
+            log += f"  \n{piece}"        
+        
 
 if __name__ == '__main__':
     start()
