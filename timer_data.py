@@ -69,8 +69,9 @@ def insert_old_timer(connexion : Connection, id, date, time_beginning, time_endi
     # last_id = connexion.execute(LAST_ID).fetchone()[0] 
     update_time_elapsed(connexion, last_id)
 
-def update_row_at_ending(connexion : Connection, last_id : int, time : datetime, log : str = ""):
-    # last_id = connexion.execute(LAST_ID).fetchone()[0]
+def update_row_at_ending(connexion : Connection, time : datetime,  last_id : int | None = None, log : str = ""):
+    if not last_id:
+        last_id = connexion.execute(LAST_ID).fetchone()[0]
     if log == "":
         add_time_ending(connexion, time, last_id)
     else :

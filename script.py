@@ -11,8 +11,6 @@ from conf import Config
 import task_logs as tl
 import tag
 
-# Conf
-# CONF = c.load_conf("conf.json")
 CONF = Config()
 LOGS = CONF.logs
 
@@ -32,8 +30,7 @@ Select an option :
 
 
 def start():
-    # connexion = db.connect(CONF.database)
-    connexion = db.connect("db_test.db")
+    connexion = db.connect(CONF.database)
     db.create_tables(connexion)
 
     while (user_input := int(input(MENU_PROMPT))) != 8:
@@ -66,9 +63,7 @@ def start():
             end_time = datetime.datetime.now()
             end_ring()
             log = enter_log()
-            data.update_row_at_ending(connexion, last_id, end_time, log)
-            # if LOGS:
-            #     tl.write_log(CONF.log_path, task, subtask)
+            data.update_row_at_ending(connexion, last_id=last_id, time=end_time, log=log)
 
         elif user_input == 4:
             try:
@@ -112,7 +107,7 @@ def start():
                 data.insert_old_timer(connexion, id, date, time_beginning, time_ending, tag_id, log)
 
         elif user_input == 7:
-            data.update_row_at_ending(connexion, datetime.datetime.now())
+            data.update_row_at_ending(connexion, time=datetime.datetime.now())
             print("Couldn't leave it huh ? Updated, boss.")
 
         elif user_input == 8:
@@ -142,9 +137,7 @@ def launch_timer(connexion : Connection, time_in_minutes : int | None = None):
     print("Good job!")
     end_ring()
     log = enter_log()
-    data.update_row_at_ending(connexion, row_id, end_time, log)
-    # if LOGS:
-    #     tl.write_log(CONF.log_path, task, subtask)
+    data.update_row_at_ending(connexion, last_id=row_id, time=end_time, log=log)
 
 def launch_pause(time_in_minutes : int | None):
     try:
