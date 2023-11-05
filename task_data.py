@@ -5,13 +5,13 @@ CHECK_TASK_EXISTENCE = 'SELECT id FROM tasks WHERE task_name=(?);'
 
 INSERT_NEW_TASK = 'INSERT INTO tasks (task_name) VALUES (?);'
 
-RETRIEVE_RANK ='SELECT * FROM tasks WHERE task_name=(?);'
+RETRIEVE_RANK ='SELECT id FROM tasks WHERE task_name=(?);'
 
 CHECK_TUPLE_EXISTENCE = 'SELECT id FROM tasks WHERE task_name=(?) AND subtask=(?);'
 
 INSERT_NEW_TUPLE = 'INSERT INTO tasks (task_name, subtask) VALUES (?, ?);'
 
-RETRIEVE_TUPLE_RANK = 'SELECT * FROM tasks WHERE task_name=(?) AND subtask=(?);'
+RETRIEVE_TUPLE_RANK = 'SELECT id FROM tasks WHERE task_name=(?) AND subtask=(?);'
 
 
 def get_task_rank_from_input(connexion : Connection, task_input : str):
@@ -64,12 +64,12 @@ def insert_new_task(connexion : Connection, *task):
 #             retrieved_id = connexion.execute(RETRIEVE_ID, [*task]).fetchone()
 #     return retrieved_id[0]
 
-def fetch_task_rank(connexion : Connection, *task) -> tuple :
+def fetch_task_rank(connexion : Connection, *task) -> int :
     with connexion:
         if len(task) == 2 :
-            return connexion.execute(RETRIEVE_TUPLE_RANK, [*task]).fetchone()
+            return connexion.execute(RETRIEVE_TUPLE_RANK, [*task]).fetchone()[0]
         else:
-            return connexion.execute(RETRIEVE_RANK, [*task]).fetchone() 
+            return connexion.execute(RETRIEVE_RANK, [*task]).fetchone()[0]
 
 if __name__ == '__main__':
     import sqlite_db as db
@@ -77,8 +77,10 @@ if __name__ == '__main__':
 
     # print(parse_input("Code.Lecture"))
     # print(parse_input("Code"))
-    task_input = task_string_input()
-    (id, task, subtask) = get_task_rank_from_input(connexion, task_input)
-    print(id, task, subtask)
-    if subtask:
-        print('JoeMama')
+    # task_input = task_string_input()
+    # (id, task, subtask) = get_task_rank_from_input(connexion, task_input)
+    # print(id, task, subtask)
+    # if subtask:
+    #     print('JoeMama')
+    tasks = fetch_task_rank(connexion, *['Code', 'Apprentissage'])
+    print(1)
