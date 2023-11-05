@@ -92,24 +92,26 @@ def insert_old_timer(connexion : Connection, record : TimeRecord):
                                           ).lastrowid
     update_time_elapsed(connexion, record)
 
-def update_row_at_ending(connexion : Connection, record : TimeRecord | None = None):
-    if not record:
-        row = list(connexion.execute("SELECT * FROM timer_data ORDER BY id DESC LIMIT 1").fetchone())
-        record = TimeRecord(*row)
-    # if not record.id:
-        # record.id = connexion.execute(LAST_ID).fetchone()[0]
+def update_row_at_ending(connexion : Connection, record : TimeRecord):
     if not record.log:
         add_time_ending(connexion, record)
     else :
-        update_time_and_log(connexion, record)
+        add_time_ending_and_log(connexion, record)
     update_time_elapsed(connexion, record)
+
+def update_last_row_ending(connexion : Connection, time : datetime):
+    row = list(connexion.execute("SELECT * FROM timer_data ORDER BY id DESC LIMIT 1").fetchone())
+    record = TimeRecord(*row)
+    with connexion:
+        connexion.execute(UPDATE_TIMER_ENDING, [time, record.id])
+        update_time_elapsed(connexion, record)
 
 def update_time_elapsed(connexion : Connection, record : TimeRecord):
     record.time_elapsed = add_elapsed_time(connexion, record)
     if record.time_elapsed < 0:
         add_day_to_time_elapsed(connexion)
 
-def update_time_and_log(connexion, record : TimeRecord):
+def add_time_ending_and_log(connexion, record : TimeRecord):
     with connexion:
         connexion.execute(UPDATE_TIMER_ENDING_AND_LOG, [record.time_ending, record.log, record.id])
 

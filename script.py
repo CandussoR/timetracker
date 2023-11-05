@@ -109,7 +109,7 @@ def start():
                 data.insert_old_timer(connexion, record)
 
         elif user_input == 7:
-            data.update_row_at_ending(connexion)
+            data.update_last_row_ending(connexion, datetime.datetime.now())
             print("Couldn't leave it huh ? Updated, boss.")
 
         elif user_input == 8:
