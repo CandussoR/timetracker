@@ -33,7 +33,7 @@ def start():
     connexion = db.connect(CONF.database)
     db.create_tables(connexion)
 
-    while (user_input := int(input(MENU_PROMPT))) != 8:
+    while (user_input := int(input(MENU_PROMPT))) != 9:
 
         if user_input == 1:
             try:
