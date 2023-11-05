@@ -51,19 +51,21 @@ def start():
             tag_id = None
             try:
                 task_input = task_data.task_string_input()
-                (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
+                task_id = task_data.get_task_rank_from_input(connexion, task_input)
                 tag_input = tag.ask_input()
                 if tag_input:
                     tag_id = tag.retrieve_tag_id(connexion, tag_input)
                 input("Press key when ready.")
             except KeyboardInterrupt:
                 continue
-            last_id = data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now(), tag_id)
+            record = data.TimeRecord(task_id=task_id, date=datetime.datetime.now(), time_beginning=datetime.datetime.now(), tag_id=tag_id)
+            record.id = data.insert_beginning(connexion, record)
             clocks.stopwatch()
-            end_time = datetime.datetime.now()
+            record.time_ending = datetime.datetime.now()
+            print("Good job!")
             end_ring()
-            log = enter_log()
-            data.update_row_at_ending(connexion, last_id=last_id, time=end_time, log=log)
+            record.log = enter_log()
+            data.update_row_at_ending(connexion, record)
 
         elif user_input == 4:
             try:
@@ -90,24 +92,24 @@ def start():
                 continue
             
         elif user_input == 6:
-                tag_id = None
+                record = data.TimeRecord()
 
                 task_input = task_data.task_string_input()
-                (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
+                record.task_id = task_data.get_task_rank_from_input(connexion, task_input)
                 tag_input = tag.ask_input()
                 if tag_input:
-                    tag_id = tag.retrieve_tag_id(connexion, tag_input)
-                date = input("Date? (YYYY-MM-DD) > ")
+                    record.tag_id = tag.retrieve_tag_id(connexion, tag_input)
+                record.date = input("Date? (YYYY-MM-DD) > ")
 
-                time_beginning = input("Beginning ? (HH:MM:SS) \n> ")
+                record.time_beginning = input("Beginning ? (HH:MM:SS) \n> ")
 
-                time_ending = input("Ending ? (HH:MM:SS) \n> ")
+                record.time_ending = input("Ending ? (HH:MM:SS) \n> ")
 
-                log = enter_log()
-                data.insert_old_timer(connexion, id, date, time_beginning, time_ending, tag_id, log)
+                record.log = enter_log()
+                data.insert_old_timer(connexion, record)
 
         elif user_input == 7:
-            data.update_row_at_ending(connexion, time=datetime.datetime.now())
+            data.update_row_at_ending(connexion)
             print("Couldn't leave it huh ? Updated, boss.")
 
         elif user_input == 8:
@@ -121,7 +123,7 @@ def launch_timer(connexion : Connection, time_in_minutes : int | None = None):
 
     try:
         task_input = task_data.task_string_input()
-        (id, task, subtask) = task_data.get_task_rank_from_input(connexion, task_input)
+        task_id = task_data.get_task_rank_from_input(connexion, task_input)
         tag_input = tag.ask_input()
         if tag_input:
             tag_id = tag.retrieve_tag_id(connexion, tag_input)
@@ -131,13 +133,14 @@ def launch_timer(connexion : Connection, time_in_minutes : int | None = None):
     except KeyboardInterrupt: 
         raise KeyboardInterrupt
     
-    row_id = data.insert_beginning(connexion, id, datetime.datetime.now(), datetime.datetime.now(), tag_id)
+    record = data.TimeRecord(task_id=task_id, date=datetime.datetime.now(), time_beginning=datetime.datetime.now(), tag_id=tag_id)
+    record.id = data.insert_beginning(connexion, record)
     clocks.timer(time_in_minutes)
-    end_time = datetime.datetime.now()
+    record.time_ending = datetime.datetime.now()
     print("Good job!")
     end_ring()
-    log = enter_log()
-    data.update_row_at_ending(connexion, last_id=row_id, time=end_time, log=log)
+    record.log = enter_log()
+    data.update_row_at_ending(connexion, record)
 
 def launch_pause(time_in_minutes : int | None):
     try:
@@ -153,7 +156,7 @@ def end_ring():
     playsound(CONF.timer_sound_path)
 
 def enter_log() -> str:
-    log = ""
+    log = None
     
     print("    Enter your log:")
     while True:
@@ -161,11 +164,10 @@ def enter_log() -> str:
 
         if piece == "":
             return log
-        if piece != "" and log == "":
-            log += piece
+        elif piece != "":
+            log = piece
         else:
             log += f"  \n{piece}"        
         
-
 if __name__ == '__main__':
     start()
