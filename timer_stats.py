@@ -24,7 +24,7 @@ SELECT_WEEK_TIMERS = '''
         WHERE date(date) BETWEEN date('now', 'weekday 1', ?) and date('now', 'weekday 0', ?);'''
 
 TOTAL_TIME_THIS_WEEK = '''
-    SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, (totsec % 60) as total
+    SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, (totsec % 60)) as total
     FROM (
         SELECT sum(time_elapsed) as totsec
         FROM timer_data
@@ -32,7 +32,7 @@ TOTAL_TIME_THIS_WEEK = '''
         );'''
 
 TOTAL_TIME_PARTICULAR_WEEK = '''
-    SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, (totsec % 60) as total
+    SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, (totsec % 60)) as total
     FROM (
         SELECT sum(time_elapsed) as totsec
         FROM timer_data
@@ -46,7 +46,7 @@ TOTAL_TIME_YEAR = '''
                   totsec / 86400,
                   (totsec % 86400) / 3600,
                   (totsec % 3600) / 60,
-                  (totsec % 60) as total
+                  (totsec % 60)) as total
     FROM (
         SELECT sum(time_elapsed) as totsec
         FROM timer_data
