@@ -100,6 +100,42 @@ MEAN_TIME_WORKED_AND_UNWORKED = '''WITH RECURSIVE dates(day,date) AS (
     FROM avg_time_all_day;
     '''
 
+MEAN_TIME_WEEK_WORKED_AND_ALL = '''
+                                WITH RECURSIVE dates(week,date) AS ( 
+                                    VALUES(strftime('%W', '2023-01-01'), '2023-01-01') 
+                                    UNION ALL 
+                                    SELECT strftime('%W', DATE(date, '+1 day')), DATE(date, '+1 day') 
+                                    FROM dates 
+                                    WHERE date < '2023-12-31'
+                                ), week_day_count AS ( 
+                                    SELECT 
+                                        week, 
+                                        date, 
+                                        COUNT(*) OVER (PARTITION BY week) as cnt_days 
+                                    FROM dates
+                                ), full_weeks AS ( 
+                                    SELECT week, date 
+                                    FROM week_day_count
+                                    WHERE cnt_days = 7
+                                ), week_means AS ( 
+                                    SELECT 
+                                        fw.week, 
+                                        fw.date, 
+                                        t.time_elapsed, 
+                                        COALESCE(t.time_elapsed, 0) as all_time_elapsed, 
+                                        SUM(t.time_elapsed) OVER (PARTITION BY fw.week) as total_time_worked, 
+                                        SUM(COALESCE(t.time_elapsed, 0)) OVER (PARTITION BY fw.week) as total_time_unworked, 
+                                        ROW_NUMBER() OVER (PARTITION BY fw.week) as row_num 
+                                    FROM full_weeks fw 
+                                    LEFT JOIN timer_data t ON fw.date = t.date
+                                    )
+                                SELECT 
+                                    ROUND(AVG(total_time_worked), 2) as avg_worked, 
+                                    ROUND(AVG(total_time_unworked), 2) as avg_all 
+                                FROM week_means 
+                                WHERE row_num = 1;
+                                '''
+
 def format_time(time : float | int) -> str:
     return '{:02d}:{:02d}:{:02d}'.format(int((time % 86400) // 3600), int((time % 3600) // 60),int(time % 60) )
 
