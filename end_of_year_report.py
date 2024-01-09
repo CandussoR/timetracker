@@ -137,47 +137,95 @@ MEAN_TIME_WORKED_AND_UNWORKED = """WITH RECURSIVE dates(day,date) AS (
     FROM avg_time_all_day;
     """
 
-WEEK_MEAN_TIMES = """
-                WITH RECURSIVE dates(week,date) AS ( 
-                    VALUES(strftime('%W', '2023-01-01'), '2023-01-01') 
-                    UNION ALL 
-                    SELECT strftime('%W', DATE(date, '+1 day')), DATE(date, '+1 day') 
-                    FROM dates 
-                    WHERE date < '2023-12-31'
-                ), week_day_count AS ( 
-                    SELECT 
-                        week, 
-                        date, 
-                        COUNT(*) OVER (PARTITION BY week) as cnt_days 
+def total_time_per_week(years : list[int|str] = None) -> list[tuple]:
+    # If no year, get the first and the last timer to use as beginning and end.
+    if not years:
+        calendar_begining, calendar_ending = connexion.execute("SELECT MIN(date), MAX(date) FROM timer_data").fetchone()
+    else:
+        calendar_begining = f'{years[0]}-01-01'
+        calendar_ending = f'{years[-1]}-12-31'
+    query = f"""
+                WITH RECURSIVE dates(year, week, day, date) AS (
+                    VALUES(
+                            strftime('%Y', '{calendar_begining}'),
+                            strftime('%W', '{calendar_begining}'),
+                            strftime('%w', '{calendar_begining}'),
+                            '{calendar_begining}'
+                        )
+                    UNION ALL
+                    SELECT strftime('%Y', DATE(date, '+1 day')),
+                        strftime('%W', DATE(date, '+1 day')),
+                        strftime('%w', DATE(date, '+1 day')),
+                        DATE(date, '+1 day')
                     FROM dates
-                ), full_weeks AS ( 
-                    SELECT week, date 
+                    WHERE date < '{calendar_ending}'
+                ),
+                calendar AS (
+                    SELECT year,
+                        date,
+                        week,
+                        day,
+                        DATE(date, '-' || (CAST(day AS INTEGER) + 1) || ' day', 'weekday 1') as start_of_week,
+                        DATE( date, '+' || (6 - CAST(day AS INTEGER)) || ' day', 'weekday 0') as end_of_week
+                    FROM dates
+                ),
+                week_day_count AS (
+                    SELECT year,
+                        date,
+                        week,
+                        start_of_week,
+                        end_of_week,
+                        COUNT(*) OVER (PARTITION BY year, week) as cnt_days
+                    FROM calendar
+                    ORDER BY year
+                ),
+                full_weeks AS (
+                    SELECT year,
+                        week,
+                        start_of_week,
+                        end_of_week,
+                        date
                     FROM week_day_count
                     WHERE cnt_days = 7
-                ), week_means AS ( 
-                    SELECT 
-                        fw.week, 
-                        fw.date, 
-                        t.time_elapsed, 
-                        COALESCE(t.time_elapsed, 0) as all_time_elapsed, 
-                        SUM(t.time_elapsed) OVER (PARTITION BY fw.week) as total_time_worked, 
-                        SUM(COALESCE(t.time_elapsed, 0)) OVER (PARTITION BY fw.week) as total_time_unworked, 
-                        ROW_NUMBER() OVER (PARTITION BY fw.week) as row_num 
-                    FROM full_weeks fw 
-                    LEFT JOIN timer_data t ON fw.date = t.date
-                    )
-                SELECT 
-                    ROUND(AVG(total_time_worked), 2) as avg_worked, 
-                    ROUND(AVG(total_time_unworked), 2) as avg_all 
-                FROM week_means 
-                WHERE row_num = 1;
-                """
+                ),
+                total_time_week AS (
+                    SELECT fw.year,
+                        fw.week,
+                        fw.start_of_week,
+                        fw.end_of_week,
+                        fw.date,
+                        t.time_elapsed,
+                        SUM(COALESCE(t.time_elapsed,0)) OVER (PARTITION BY fw.year, fw.week) as total_time_worked
+                    FROM full_weeks fw
+                        LEFT JOIN timer_data t ON fw.date = t.date
+                )
+                SELECT year,
+                    week,
+                    start_of_week,
+                    end_of_week,
+                    total_time_worked
+                FROM total_time_week
+                GROUP BY week;
+            """
+    return connexion.execute(query).fetchall()
 
-TOTAL_TIME_EACH_YEAR = '''
+
+def total_time_for_year(years : list[int|str] = None) -> list[tuple]:
+    '''
+       If no year list passed, queries the entire database.
+       Returns a list of tuples (year, total time, percentage compared to previous year).
+    '''
+    params = []
+    if years : 
+        years = [str(y) for y in years]
+        params = [*years]
+    where_clause = "WHERE strftime('%Y', date) IN ({})".format(",".join(["?" for _ in years])) if years else ""
+    query = f"""
                         WITH total_year_time AS (
                             SELECT strftime('%Y', date) as year,
                                 SUM(time_elapsed) OVER (PARTITION BY strftime('%Y', date)) as total_time_year
                             FROM timer_data
+                            {where_clause}
                         ),
                         grps AS (
                             SELECT *
@@ -195,24 +243,31 @@ TOTAL_TIME_EACH_YEAR = '''
                                 1
                             ) as time_previous_year
                         FROM grps;                   
-                        '''
+                        """
+    return connexion.execute(query, params).fetchall()
 
-def format_time(time: float | int, max_unit : Literal["day", "hour"] = "hour") -> str:
+
+def format_time(time: float | int, max_unit: Literal["day", "hour"] = "hour") -> str:
     if max_unit == "day":
-       return "{:02d}:{:02d}:{:02d}:{:02d}".format(
-        int((time // 86400)), int((time % 86400) // 3600), int((time % 3600) // 60), int(time % 60)
-    )
+        return "{:02d}:{:02d}:{:02d}:{:02d}".format(
+            int((time // 86400)),
+            int((time % 86400) // 3600),
+            int((time % 3600) // 60),
+            int(time % 60),
+        )
     else:
         return "{:02d}:{:02d}:{:02d}".format(
             int(time // 3600), int((time % 3600) // 60), int(time % 60)
         )
 
-def total_time_for_each_task_for_years(years : list[int|str] = None, tasks : list[str] = None) -> list[tuple]:
-    '''Returns a list of tuples (year, task, total_time, percent).'''
+
+def total_time_for_each_task_for_years(years: list[int | str] = None, tasks: list[str] = None) -> list[tuple]:
+    """Returns a list of tuples (year, task, total_time, percent)."""
     if years:
         years = [str(y) for y in years]
-    years_query = "strftime('%Y', date) IN ( ({})".format(','.join(['?' for _ in years])) if years else ""
-    task_query = 'task_name IN ({})'.format(','.join(['?' for _ in tasks])) if tasks else ""
+
+    years_query = "strftime('%Y', date) IN ( ({})".format(",".join(["?" for _ in years])) if years else ""
+    task_query = "task_name IN ({})".format(",".join(["?" for _ in tasks])) if tasks else ""
 
     if years and tasks:
         where_clause = f"""WHERE {years_query} AND {task_query}"""
@@ -223,11 +278,11 @@ def total_time_for_each_task_for_years(years : list[int|str] = None, tasks : lis
     elif tasks:
         where_clause = f"""WHERE {task_query}"""
         params = [*tasks]
-    else :
+    else:
         where_clause = ""
         params = []
 
-    query = f'''
+    query = f"""
             with task_per_year AS (
                 SELECT strftime('%Y', date) as year,
                     task_name,
@@ -249,14 +304,16 @@ def total_time_for_each_task_for_years(years : list[int|str] = None, tasks : lis
             GROUP BY year,
                 task_name
             ORDER BY task_name;
-            '''
-
+            """
     return connexion.execute(query, params).fetchall()
 
 
-def count_task_for_each_days(years : list[int | str] = None) -> list[tuple]:
-    placeholders = ','.join(['?' for _ in years])
-    query = f'''
+def count_task_for_each_days(years: list[int | str] = None) -> list[tuple]:
+    params = []
+    if years : 
+        where_clause = "WHERE strftime('%Y', date) IN ({})".format(",".join(["?" for _ in years])) if years else ""
+        params = [str(year) for year in years]
+    query = f"""
                 with task_per_year AS (
                     SELECT strftime('%Y', date) as year,
                         task_name,
@@ -264,7 +321,7 @@ def count_task_for_each_days(years : list[int | str] = None) -> list[tuple]:
                         COUNT(*) OVER (PARTITION BY strftime('%Y', date), strftime('%w', date), task_name) as total_per_day
                     FROM timer_data td
                         JOIN tasks t ON td.task_id = t.id
-                    WHERE strftime('%Y', date) IN ({placeholders})
+                    {where_clause}
                 )
                 SELECT year,
                     task_name,
@@ -278,23 +335,59 @@ def count_task_for_each_days(years : list[int | str] = None) -> list[tuple]:
                 FROM task_per_year
                 GROUP BY year, task_name
                 ORDER BY task_name;
+    """
+    return connexion.execute(query, params).fetchall()
+
+
+def count_days_with_task_in_month_for_years(years: list[int | str] = None,) -> list[tuple]:
     '''
-    return connexion.execute(query, [str(year) for year in years]).fetchall()
+        If not year list is passed, queries the entire database.  
+        Returns a list of tuple of length 13 or 14 with year (if any), task name, and each month.
+    '''
+    params = []
+    if years : 
+        where_clause = "WHERE strftime('%Y', date) IN ({})".format(",".join(["?" for _ in years])) if years else ""
+        params = [str(year) for year in years]
+    query = f"""
+                with task_per_month AS (
+                    SELECT {"strftime('%Y', date) as year"},
+                        strftime('%m', date) as month,
+                        task_name
+                    FROM timer_data td
+                        JOIN tasks t ON td.task_id = t.id
+                    {where_clause}
+                    GROUP BY year,
+                        month,
+                        date,
+                        task_name
+                    ORDER BY date
+                ),
+                counts AS (
+                    SELECT *,
+                        COUNT(*) OVER (PARTITION BY year, month, task_name) as cnt
+                    FROM task_per_month
+                )
+                SELECT year,
+                    task_name,
+                    MAX( CASE WHEN month = '01' THEN cnt ELSE 0 END) as jan,
+                    MAX( CASE WHEN month = '02' THEN cnt  ELSE 0 END) as feb,
+                    MAX( CASE WHEN month = '03' THEN cnt ELSE 0 END) as mar,
+                    MAX( CASE WHEN month = '04' THEN cnt ELSE 0 END) as apr,
+                    MAX( CASE WHEN month = '05' THEN cnt ELSE 0 END) as may,
+                    MAX( CASE WHEN month = '06' THEN cnt ELSE 0 END) as june,
+                    MAX( CASE WHEN month = '07' THEN cnt ELSE 0 END) as july,
+                    MAX( CASE WHEN month = '08' THEN cnt ELSE 0 END) as aug,
+                    MAX( CASE WHEN month = '09' THEN cnt ELSE 0 END) as sept,
+                    MAX( CASE WHEN month = '10' THEN cnt ELSE 0 END) as oct,
+                    MAX( CASE WHEN month = '11' THEN cnt ELSE 0 END) as nov,
+                    MAX( CASE WHEN month = '12' THEN cnt ELSE 0 END) as dec
+                FROM counts
+                GROUP BY task_name, year
+                ORDER BY task_name;
+    """
+    return connexion.execute(query, params).fetchall()
 
 
-# task_array = []
-# days_count_array = []
-# for task in task_list(connexion) :
-#     task_name, days_done_count, total_time = connexion.execute(YEARLY_REPORT, [task[0]]).fetchone()
-#     task_array.append(task_name)
-#     days_count_array.append(int(days_done_count))
-#     if days_done_count > 10:
-#         print(f"{task_name} | {days_done_count} | {total_time}\n")
-
-# TODO: extract data into a file
-# TODO: decide what the file should be, what the separators should be
-
-# TODO: voir pour chaque jour la portion du temps dédié à telle tâche.
 if __name__ == "__main__":
     connexion = db.connect("timer_data.db")
 
@@ -317,23 +410,39 @@ if __name__ == "__main__":
     # stats = connexion.execute(YEAR_IN_TASK).fetchall()
     # formatted_stats = [(task, day_cnt, format_time(time_elapsed, "day")) for (task, day_cnt, time_elapsed) in stats]
     # for r in formatted_stats:
-    #    print(f"| {r[0]} | {r[1]} | {r[2]} |") 
+    #    print(f"| {r[0]} | {r[1]} | {r[2]} |")
 
     # TOTAL TIME FOR EACH YEAR
-    # time_year = connexion.execute(TOTAL_TIME_EACH_YEAR).fetchall()
+    # time_year = total_time_for_year()
     # formatted = [(year, format_time(time_elapsed, "day"), ratio) for (year, time_elapsed, ratio) in time_year]
     # for r in formatted:
     #     print(f"| {r[0]} | {r[1]} | {r[2]} |")
 
     # # TOTAL TIME FOR EACH TASK FOR EACH YEAR
-    task_time_per_year = total_time_for_each_task_for_years()
-    formatted = [(year, task, format_time(time_elapsed, "day"), ratio if ratio else '0') for (year, task, time_elapsed, ratio) in task_time_per_year]
-    for r in formatted:
-        print(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} |")
-    print("----------------------------------------------------")
+    # task_time_per_year = total_time_for_each_task_for_years()
+    # formatted = [(year, task, format_time(time_elapsed, "day"), ratio if ratio else '0') for (year, task, time_elapsed, ratio) in task_time_per_year]
+    # for r in formatted:
+    #     print(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} |")
+    # print("----------------------------------------------------")
 
-    # TOTAL TASK PER DAY OF WEEK
-    task_per_day = count_task_for_each_days(["2022", "2023"])
-    print("| task | mon. |tue. | wed. | thu. |  fri. | sat. | sun. |")
-    for row in task_per_day :
-        print(f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {row[7]} |")
+    # # TOTAL TASK PER DAY OF WEEK
+    # task_per_day = count_task_for_each_days(["2022", "2023"])
+    # print("| year | task | mon. |tue. | wed. | thu. |  fri. | sat. | sun. |")
+    # for row in task_per_day :
+    # print(f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {row[7]} | {row[8]} |")
+
+    # task_per_day_per_month = count_days_with_task_in_month_for_years(["2022", "2023"])
+    # print("|year|task_name|jan|feb|mar|apr|may|june|july|aug|sept|oct|nov|dec|")
+    # print("|-|-|-|-|-|-|-|-|-|-|-|-|-|-|")
+    # for year,task_name,jan,feb,mar,apr,may,june,july,aug,sept,oct,nov,dec in task_per_day_per_month:
+    #     print(f"|{year}|{task_name}|{jan}|{feb}|{mar}|{apr}|{may}|{june}|{july}|{aug}|{sept}|{oct}|{nov}|{dec}|")
+
+
+    #TOTAL TIME PER WEEK
+    # ttpw = total_time_per_week(["2023"])
+    # formatted_result = [(date, wn, sw, ew, format_time(tt, "hour")) for date, wn, sw, ew, tt in ttpw]
+    # print("| year | week_num | start_week | end_week | total time |")
+    # print("| :--: | :------: | :--------: | :------: | :--------: |")
+    # for date, wn, sw, ew, tt in formatted_result:
+        # print(f"| {date} | {wn} | {sw} | {ew} | {tt} |")
+    # print(formatted_result)
