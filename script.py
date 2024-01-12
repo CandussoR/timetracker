@@ -33,90 +33,93 @@ def start():
     connexion = db.connect(CONF.database)
     db.create_tables(connexion)
 
-    while (user_input := int(input(MENU_PROMPT))) != 9:
+    try:
+        while (user_input := int(input(MENU_PROMPT))) != 9:
 
-        if user_input == 1:
-            try:
-                launch_timer(connexion)
-            except KeyboardInterrupt:
-                continue
+            if user_input == 1:
+                try:
+                    launch_timer(connexion)
+                except KeyboardInterrupt:
+                    continue
 
-        elif user_input == 2:
-            try :
-                launch_pause()
-            except KeyboardInterrupt:
-                continue
+            elif user_input == 2:
+                try :
+                    launch_pause(None)
+                except KeyboardInterrupt:
+                    continue
 
-        elif user_input == 3:
-            tag_id = None
-            try:
-                task_input = task_data.task_string_input()
-                task_id = task_data.get_task_rank_from_input(connexion, task_input)
-                tag_input = tag.ask_input()
-                if tag_input:
-                    tag_id = tag.retrieve_tag_id(connexion, tag_input)
-                input("Press key when ready.")
-            except KeyboardInterrupt:
-                continue
-            record = data.TimeRecord(task_id=task_id, date=datetime.datetime.now(), time_beginning=datetime.datetime.now(), tag_id=tag_id)
-            record.id = data.insert_beginning(connexion, record)
-            clocks.stopwatch()
-            record.time_ending = datetime.datetime.now()
-            print("Good job!")
-            end_ring()
-            record.log = enter_log()
-            data.update_row_at_ending(connexion, record)
-
-        elif user_input == 4:
-            try:
-                collection = FlowCollection(CONF)
-                for i, flow in enumerate(collection.flows):
-                    sets = flow.get_sets()
-                    sets = [str(set) for set in sets]
-                    print(f"    {i+1}) {flow.name} ;")
-                    print(f"\t{len(sets)} sets : {', '.join(sets)}")
-                flow_number = int(input("    Which flow do you want to launch ?\r\n    > "))
-
-                for i, set in enumerate(collection.flows[flow_number - 1].get_sets()):
-                    number_of_sets = len(sets)
-                    print(f"    SET N°{i+1}/{number_of_sets}")
-                    launch_timer(connexion, set[0])
-                    launch_pause(set[1])
-            except KeyboardInterrupt as e:
-                continue
-
-        elif user_input == 5:
-            try:
-                stats.display_stats(connexion)
-            except KeyboardInterrupt:
-                continue
-            
-        elif user_input == 6:
-                record = data.TimeRecord()
-
-                task_input = task_data.task_string_input()
-                record.task_id = task_data.get_task_rank_from_input(connexion, task_input)
-                tag_input = tag.ask_input()
-                if tag_input:
-                    record.tag_id = tag.retrieve_tag_id(connexion, tag_input)
-                record.date = input("Date? (YYYY-MM-DD) > ")
-
-                record.time_beginning = input("Beginning ? (HH:MM:SS) \n> ")
-
-                record.time_ending = input("Ending ? (HH:MM:SS) \n> ")
-
+            elif user_input == 3:
+                tag_id = None
+                try:
+                    task_input = task_data.task_string_input()
+                    task_id = task_data.get_task_rank_from_input(connexion, task_input)
+                    tag_input = tag.ask_input()
+                    if tag_input:
+                        tag_id = tag.retrieve_tag_id(connexion, tag_input)
+                    input("Press key when ready.")
+                except KeyboardInterrupt:
+                    continue
+                record = data.TimeRecord(task_id=task_id, date=datetime.datetime.now(), time_beginning=datetime.datetime.now(), tag_id=tag_id)
+                record.id = data.insert_beginning(connexion, record)
+                clocks.stopwatch()
+                record.time_ending = datetime.datetime.now()
+                print("Good job!")
+                end_ring()
                 record.log = enter_log()
-                data.insert_old_timer(connexion, record)
+                data.update_row_at_ending(connexion, record)
 
-        elif user_input == 7:
-            data.update_last_row_ending(connexion, datetime.datetime.now())
-            print("Couldn't leave it huh ? Updated, boss.")
+            elif user_input == 4:
+                try:
+                    collection = FlowCollection(CONF)
+                    for i, flow in enumerate(collection.flows):
+                        sets = flow.get_sets()
+                        sets = [str(set) for set in sets]
+                        print(f"    {i+1}) {flow.name} ;")
+                        print(f"\t{len(sets)} sets : {', '.join(sets)}")
+                    flow_number = int(input("    Which flow do you want to launch ?\r\n    > "))
 
-        elif user_input == 8:
-            print("Not implemented. Logs, flows, etc. Probably only in GUI.")
+                    for i, set in enumerate(collection.flows[flow_number - 1].get_sets()):
+                        number_of_sets = len(sets)
+                        print(f"    SET N°{i+1}/{number_of_sets}")
+                        launch_timer(connexion, set[0] * 60)
+                        launch_pause(set[1] * 60)
+                except KeyboardInterrupt as e:
+                    continue
 
-        else:
-            print("Invalid input, enter a number between 1 and 9.") 
+            elif user_input == 5:
+                try:
+                    stats.display_stats(connexion)
+                except KeyboardInterrupt:
+                    continue
+                
+            elif user_input == 6:
+                    record = data.TimeRecord()
+
+                    task_input = task_data.task_string_input()
+                    record.task_id = task_data.get_task_rank_from_input(connexion, task_input)
+                    tag_input = tag.ask_input()
+                    if tag_input:
+                        record.tag_id = tag.retrieve_tag_id(connexion, tag_input)
+                    record.date = input("Date? (YYYY-MM-DD) > ")
+
+                    record.time_beginning = input("Beginning ? (HH:MM:SS) \n> ")
+
+                    record.time_ending = input("Ending ? (HH:MM:SS) \n> ")
+
+                    record.log = enter_log()
+                    data.insert_old_timer(connexion, record)
+
+            elif user_input == 7:
+                data.update_last_row_ending(connexion, datetime.datetime.now())
+                print("Couldn't leave it huh ? Updated, boss.")
+
+            elif user_input == 8:
+                print("Not implemented. Logs, flows, etc. Probably only in GUI.")
+
+            else:
+                print("Invalid input, enter a number between 1 and 9.")
+    except ValueError:
+        print("See ya!\n")
 
 def launch_timer(connexion : Connection, time_in_minutes : int | None = None):
     tag_id = None
@@ -171,3 +174,5 @@ def enter_log() -> str:
         
 if __name__ == '__main__':
     start()
+
+
