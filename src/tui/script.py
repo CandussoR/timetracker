@@ -13,6 +13,7 @@ from src.shared.models.time_record import TimeRecordInput
 from src.shared.repositories import stats_repository, tag_repository, task_repository, time_record_repository
 import src.tui.clocks.clocks as clocks
 from src.tui.input import tag_input, task_input
+from src.tui.stats import stats_facade
 
 MENU_PROMPT = f'''\n
 Select an option :
@@ -80,7 +81,9 @@ def start(conf : Config, db_name : str):
 
             elif user_input == 5:
                 try:
-                    stats_repository.display_stats(db_name)
+                    connexion = sqlite_db.connect(db_name)
+                    stats_facade.display_stats(connexion)
+                    connexion.close()
                 except KeyboardInterrupt:
                     continue
                 
