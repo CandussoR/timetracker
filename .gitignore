@@ -1,10 +1,9 @@
 .DS_Store
 .ipynb_checkpoints/
-Tests/
 *.ipynb
 __pycache__/
-timer_data.db
+*.db*
 .vscode/
-conf.json
+*conf.json
 todo.md
 *.mp3
