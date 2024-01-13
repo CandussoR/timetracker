@@ -9,7 +9,6 @@ def ask_input() -> str:
             if int(tag_input):
                 print("Tag must be a string.")
         except ValueError :
-            print(tag_input)
             return tag_input.strip()
 
 
