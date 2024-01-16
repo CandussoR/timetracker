@@ -45,7 +45,7 @@ class SqliteStatRepository():
                 timer_per_task = self.connexion.execute(total_time_today).fetchone()
             elif time_span == 'week':
                 total_time_this_week = '''
-                    SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, (totsec % 86400) / 3600) as total
+                    SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, totsec % 60) as total
                     FROM (
                         SELECT sum(time_elapsed) as totsec
                         FROM timer_data
@@ -58,7 +58,7 @@ class SqliteStatRepository():
                                 totsec / 86400,
                                 (totsec % 86400) / 3600,
                                 (totsec % 3600) / 60,
-                                (totsec % 86400) / 3600) as total
+                                totsec % 60) as total
                     FROM (
                         SELECT sum(time_elapsed) as totsec
                         FROM timer_data
