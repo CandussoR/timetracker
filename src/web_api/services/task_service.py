@@ -21,7 +21,7 @@ class TaskService():
         task = Task().from_dict(schema)
         created = self.repo.insert_new_task(task)
         self.connexion.commit()
-        return TaskSchema().dump(created)
+        return TaskSchema().dump(Task(*created))
     
 
     def update(self, data : dict):
