@@ -27,9 +27,13 @@ def display_stats(connexion : Connection):
 
     more = input("See every task max streak (y) ?\n\t>> ")
     if more == 'y':
-        repo.all_task_streaks()
+        for task, streak in repo.all_task_streaks():
+            print(f"  Max streak for {task} : {streak}")
+
 
     weeks = input("See last weeks (y) ?\n\t>> ")
     if weeks == 'y':
         number_of_weeks : int = int(input("\tHow many ?\n\t>> "))
-        repo.past_weeks(number_of_weeks)
+        time_per_week = repo.past_weeks(number_of_weeks)
+        for monday, sunday, tpw in time_per_week:
+            print(f"Week from Monday {monday} to Sunday {sunday} : \n\t Total time : {tpw}")

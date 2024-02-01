@@ -45,7 +45,7 @@ def start(conf : Config, db_name : str):
 
             elif user_input == 2:
                 try :
-                    launch_pause(None)
+                    launch_pause(None, conf)
                 except KeyboardInterrupt:
                     continue
 
@@ -98,7 +98,7 @@ def start(conf : Config, db_name : str):
             elif user_input == 7:
                 connexion = sqlite_db.connect(db_name)
                 time_record_repo = time_record_repository.SqliteTimeRecordRepository(connexion = connexion)
-                time_record_repo.update_last_row_ending(datetime.datetime.now())
+                time_record_repo.update_last_row_ending(datetime.now())
                 connexion.commit()
                 connexion.close()
                 print("Couldn't leave it huh ? Updated, boss.")
@@ -127,7 +127,6 @@ def launch_clock_facade(db_name : str, time_record : TimeRecordInput, clock : Li
 
 def end_of_clock_facade(db_name : str, conf : Config, time_record : TimeRecordInput):
     time_record.time_ending = datetime.now()
-    print(time_record)
     end_ring(conf)
     time_record.log = enter_log()
     update_record(db_name, time_record)
@@ -175,7 +174,7 @@ def start_clock(clock : Literal["timer", "stopwatch"], times_in_minutes : Option
         clocks.stopwatch()
 
 
-def launch_pause(time_in_minutes : int | None):
+def launch_pause(time_in_minutes : int | None, conf: Config):
     try:
         if not time_in_minutes :
             time_in_minutes = int(input("How long ? > "))*60
@@ -183,7 +182,7 @@ def launch_pause(time_in_minutes : int | None):
         raise KeyboardInterrupt
     start_clock("timer", time_in_minutes)
     print("Back at it!")
-    end_ring()
+    end_ring(conf)
 
 
 def end_ring(conf : Config):
