@@ -14,20 +14,62 @@ class SqliteTimeRecordRepository():
 
 
     def get(self, guid : str) -> tuple:
-        query = '''SELECT tasks.guid as task_guid, 
+        query = '''SELECT td.guid,
+                          tasks.guid as task_guid, 
                           date, 
                           time_beginning, 
                           time_ending, 
                           time_elapsed, 
                           tags.guid as tag_guid, 
-                          log, 
-                          td.guid
+                          log
                    FROM timer_data td
                    JOIN tasks ON tasks.id = td.task_id
                    LEFT JOIN tags ON tags.id = td.tag_id
                    WHERE td.guid = (?);'''
         return self.connexion.execute(query, [guid]).fetchone()
+    
+    def get_by(self, conditions : dict) -> list[tuple]:
+        print(conditions)
+        keys = conditions.keys()
+        parameters = []
+        try:
+            if "date" in keys:
+                parameters.append("date = (:date)")
+            if set(["rangeBeginning", "rangeEnd"]).issubset(keys):
+            # if conditions["rangeBeginning"] and conditions["rangeEnd"]:
+                parameters.append("date BETWEEN (:rangeBeginning) AND (:rangeEnd)")
+            if "year" in keys :
+                year = conditions["year"]
+                like = f"'{year}%'"
+                parameters.append(f"date LIKE {like}")
+            if "month" in keys:
+                month = conditions["month"]
+                like = f"'{month}%'"
+                parameters.append(f"date LIKE {like}")
+            # if conditions["task"] and not conditions["subtask"]:
+            if "task" in keys and not "subtask" in keys:
+                parameters.append("tasks.task_name = (:task)")
+            if set(["task", "subtask"]).issubset(keys):
+            # elif conditions["task"] and conditions["subtask"]:
+                parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
+            if "tag" in keys:
+                parameters.append("tags.tag = (:tag)")
+        except Exception as e:
+            print(e)
 
+        query = f'''SELECT td.guid,
+                          tasks.guid as task_guid, 
+                          date, 
+                          time_beginning, 
+                          time_ending, 
+                          time_elapsed, 
+                          tags.guid as tag_guid, 
+                          log  
+                   FROM timer_data td
+                   JOIN tasks ON tasks.id = td.task_id
+                   LEFT JOIN tags ON tags.id = td.tag_id
+                   WHERE {' AND '.join(parameters)}'''
+        return self.connexion.execute(query, conditions).fetchall()
 
     def insert_beginning(self, record: TimeRecordInput) -> int:
         '''Returns the guid of the inserted time record.'''

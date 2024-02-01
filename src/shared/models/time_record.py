@@ -34,6 +34,7 @@ class TimeRecordInput():
 
 @dataclass
 class TimeRecordResource():
+    guid : str = field(default_factory=new_ulid)
     task_guid : str = None
     date : datetime = None
     time_beginning : datetime = None
@@ -41,13 +42,14 @@ class TimeRecordResource():
     time_elapsed : int = None
     tag_guid : str = None
     log : str = None
-    guid : str = field(default_factory=new_ulid)
 
     def __post_init__(self):
         if self.date:
             self.date = datetime.strptime(self.date, "%Y-%m-%d").date()
         if self.time_beginning:
+            print("modifying time beginning", self.time_beginning)
             self.time_beginning = datetime.strptime(self.time_beginning, "%H:%M:%S").time()
+            print("modified time beginning", self.time_beginning)
         if self.time_ending:
             self.time_ending = datetime.strptime(self.time_ending, "%H:%M:%S").time()
 

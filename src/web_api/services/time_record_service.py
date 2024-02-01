@@ -22,7 +22,13 @@ class TimeRecordService():
         else:
             tr = TimeRecordResource(*data)
             return TimeRecordSchema().dump(tr)
-
+    
+    def get_by(self, conditions : dict):
+        data = self.repo.get_by(conditions)
+        print(data)
+        tr = [TimeRecordResource(*d) for d in data]
+        print(tr)
+        return TimeRecordSchema().dump(tr, many=True)
 
     def post(self, time_record_type : str, data : dict) -> str:
         # Forced to use unknown=EXLUDE for Schema validation

@@ -6,19 +6,19 @@ class TimeRecordRequestSchema(Schema):
     date = fields.Date(required=True)
     time_beginning = fields.Time(required=True)
     time_ending = fields.Time(required=True)
-    tag_id = fields.String(required=False, validate=validate.Length(equal=26))
-    log = fields.Str(required=False)
+    tag_id = fields.String(required=False, allow_none=True, validate=validate.Length(equal=26))
+    log = fields.Str(required=False, allow_none=True)
 
 class TimeRecordBeginningRequestSchema(Schema):
     task_id = fields.String(required=False, validate=validate.Length(equal=26))
     date = fields.Date(required=True)
     time_beginning = fields.Time(required=True) 
-    tag_id = fields.String(required=False, validate=validate.Length(equal=26))
+    tag_id = fields.String(required=False, allow_none=True, validate=validate.Length(equal=26))
 
 class TimeRecordEndingRequestSchema(Schema):
     guid = fields.String(required=True, validate=validate.Length(equal=26))
     time_ending = fields.Time(required=True)
-    log = fields.Str(required=False)
+    log = fields.Str(required=False, allow_none=True)
 
 class TimeRecordSchema(Schema):
     guid = fields.String(attribute='guid')
@@ -27,5 +27,5 @@ class TimeRecordSchema(Schema):
     time_beginning = fields.DateTime(attribute='time_beginning')
     time_ending = fields.DateTime(attribute='time_ending')
     time_elapsed = fields.Integer(attribute='time_elapsed')
-    tag_guid = fields.String(attribute='tag_guid', required=False)
-    log = fields.String(attribute='log', required=False)
+    tag_guid = fields.String(attribute='tag_guid', required=False, allow_none=True)
+    log = fields.String(attribute='log', required=False, allow_none=True)

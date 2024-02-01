@@ -14,6 +14,16 @@ def get(guid : str):
     except Exception as e:
         return {"code" : 400, "message" : str(e)}
 
+@time_records_blueprint.route("/time_records", methods=["GET"])
+def get_time_records_by():
+    # Converts params from Flask ImmutableMultiDict to a simple dict.
+    params = request.args.to_dict()
+    try:
+        service = TimeRecordService()
+        time_records = service.get_by(params)
+        return time_records, 200
+    except Exception as e:
+        return str(e), 400
 
 @time_records_blueprint.route("/time_records", methods=["POST"])
 def create_time_record():
