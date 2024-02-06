@@ -42,3 +42,8 @@ a week or the year.
   doskey timetracker=.python-venv\timetracker\Scripts\activate.bat $T cd code\timer_sans_classe $T python script.py
   ```
 - Note that there might be something better to do, but this will be good enough to play with it.
+
+## Launching the API
+* You can launch the API with the command `python3 run.py --api`.
+* If you have a test database named `test.db` you'd like to branch the api too, you can use the `--test` arg :
+  `python3 run.py --api --test`.
