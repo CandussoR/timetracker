@@ -22,10 +22,11 @@ class TimeRecordEndingRequestSchema(Schema):
 
 class TimeRecordSchema(Schema):
     guid = fields.String(attribute='guid')
-    task_guid = fields.String(attribute='task_guid')
+    task_name = fields.String(attribute="task_name")
+    subtask = fields.String(attribute="subtask")
     date = fields.Date(attribute='date')
     time_beginning = fields.DateTime(attribute='time_beginning')
     time_ending = fields.DateTime(attribute='time_ending')
     time_elapsed = fields.Integer(attribute='time_elapsed')
-    tag_guid = fields.String(attribute='tag_guid', required=False, allow_none=True)
+    tag = fields.String(attribute='tag', required=False, allow_none=True)
     log = fields.String(attribute='log', required=False, allow_none=True)

@@ -35,12 +35,14 @@ class TimeRecordInput():
 @dataclass
 class TimeRecordResource():
     guid : str = field(default_factory=new_ulid)
-    task_guid : str = None
+    # task_guid : str = None
+    task_name : str = None
+    subtask : str = None
     date : datetime = None
     time_beginning : datetime = None
     time_ending : datetime = None
     time_elapsed : int = None
-    tag_guid : str = None
+    tag : str = None
     log : str = None
 
     def __post_init__(self):

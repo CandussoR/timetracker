@@ -15,12 +15,12 @@ class SqliteTimeRecordRepository():
 
     def get(self, guid : str) -> tuple:
         query = '''SELECT td.guid,
-                          tasks.guid as task_guid, 
+                          tasks.task_name,
+                          tasks.subtask,
                           date, 
                           time_beginning, 
                           time_ending, 
-                          time_elapsed, 
-                          tags.guid as tag_guid, 
+                          tags.tag,
                           log
                    FROM timer_data td
                    JOIN tasks ON tasks.id = td.task_id
@@ -29,7 +29,6 @@ class SqliteTimeRecordRepository():
         return self.connexion.execute(query, [guid]).fetchone()
     
     def get_by(self, conditions : dict) -> list[tuple]:
-        print(conditions)
         keys = conditions.keys()
         parameters = []
         try:
@@ -58,12 +57,13 @@ class SqliteTimeRecordRepository():
             print(e)
 
         query = f'''SELECT td.guid,
-                          tasks.guid as task_guid, 
+                          tasks.task_name,
+                          tasks.subtask,
                           date, 
                           time_beginning, 
                           time_ending, 
                           time_elapsed, 
-                          tags.guid as tag_guid, 
+                          tags.tag, 
                           log  
                    FROM timer_data td
                    JOIN tasks ON tasks.id = td.task_id
