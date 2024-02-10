@@ -1,8 +1,22 @@
-from flask import Blueprint
+from flask import Blueprint, json, request
+
+from src.web_api.services.stats_service import StatService
 
 
 stats_blueprint = Blueprint("stats", __name__)
 
-@stats_blueprint.route("/stats/resume", methods=["GET"])
+# @stats_blueprint.route("/stats/resume", methods=["GET"])
+@stats_blueprint.get("/stats/resume")
 def get_home_stats():
-    return "number of timers and total hours, flow style."
+    try:
+        return  StatService().get_home_stats(), 200
+    except Exception as e:
+        return str(e), 400
+
+@stats_blueprint.get("/stats/weeks")
+def get_week_stats():
+    try:
+        params = request.args.to_dict()
+        return StatService().get_week_total_time(params), 200
+    except Exception as e :
+        return str(e), 400

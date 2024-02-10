@@ -26,46 +26,74 @@ class SqliteStatRepository():
 
     def timer_count(self, time_span : str) -> int :
         with self.connexion:
-            if time_span == 'today':
-                total_count = "SELECT COUNT(*) FROM timer_data WHERE date(date) = date('now');"
-                number = self.connexion.execute(total_count).fetchone()
-            elif time_span == 'week':
-                week_count = "SELECT COUNT(*) FROM timer_data WHERE date(date) > date('now', 'weekday 0', '-7 days')"
-                number = self.connexion.execute(week_count).fetchone()
-            elif time_span == 'year':
-                year_count = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))"
-                number = self.connexion.execute(year_count).fetchone()
-        return number[0]
+            try: 
 
+                if time_span == 'today':
+                    total_count = "SELECT COUNT(*) FROM timer_data WHERE date(date) = date('now');"
+                    number = self.connexion.execute(total_count).fetchone()
+                elif time_span == 'week':
+                    week_count = "SELECT COUNT(*) FROM timer_data WHERE date(date) > date('now', 'weekday 0', '-7 days')"
+                    number = self.connexion.execute(week_count).fetchone()
+                elif time_span == 'month':
+                    month_count = "SELECT COUNT(*) FROM timer_data WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')"
+                    print("month count")
+                    number = self.connexion.execute(month_count).fetchone()
+                elif time_span == 'year':
+                    year_count = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))"
+                    number = self.connexion.execute(year_count).fetchone()
+
+                return number[0]
+
+            except Exception as e:
+                print("exception in timer count")
+                raise Exception(e) from e
+            
     def total_time(self, time_span : str) -> str :
         with self.connexion:
-            if time_span == 'today':    
-                total_time_today = '''SELECT time(sum(time_elapsed), 'unixepoch') FROM timer_data
-                        WHERE date(date) = date('now');'''
-                timer_per_task = self.connexion.execute(total_time_today).fetchone()
-            elif time_span == 'week':
-                total_time_this_week = '''
-                    SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, totsec % 60) as total
-                    FROM (
-                        SELECT sum(time_elapsed) as totsec
-                        FROM timer_data
-                        WHERE date(date) > date('now', 'weekday 0', '-7 days')
-                        );'''
-                timer_per_task = self.connexion.execute(total_time_this_week).fetchone()
-            elif time_span == 'year':
-                total_time_year = '''
-                    SELECT printf("%02d:%02d:%02d:%02d",
-                                totsec / 86400,
-                                (totsec % 86400) / 3600,
-                                (totsec % 3600) / 60,
-                                totsec % 60) as total
-                    FROM (
-                        SELECT sum(time_elapsed) as totsec
-                        FROM timer_data
-                        WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))
-                        );'''
-                timer_per_task = self.connexion.execute(total_time_year).fetchone()
-            return timer_per_task[0]
+            try:
+                if time_span == 'today':    
+                    total_time_today = '''SELECT time(sum(time_elapsed), 'unixepoch') FROM timer_data
+                            WHERE date(date) = date('now');'''
+                    timer_per_task = self.connexion.execute(total_time_today).fetchone()
+                elif time_span == 'week':
+                    total_time_this_week = '''
+                        SELECT printf("%02d:%02d:%02d", totsec / 3600, (totsec % 3600) / 60, totsec % 60) as total
+                        FROM (
+                            SELECT sum(time_elapsed) as totsec
+                            FROM timer_data
+                            WHERE date(date) > date('now', 'weekday 0', '-7 days')
+                            );'''
+                    timer_per_task = self.connexion.execute(total_time_this_week).fetchone()
+                elif time_span == 'month':
+                    total_time_month = '''
+                        SELECT printf("%02d:%02d:%02d:%02d",
+                                    totsec / 86400,
+                                    (totsec % 86400) / 3600,
+                                    (totsec % 3600) / 60,
+                                    totsec % 60) as total
+                        FROM ( 
+                            SELECT sum(time_elapsed) as totsec
+                            FROM timer_data 
+                            WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+                            );'''
+                    timer_per_task = self.connexion.execute(total_time_month).fetchone()
+                elif time_span == 'year':
+                    total_time_year = '''
+                        SELECT printf("%02d:%02d:%02d:%02d",
+                                    totsec / 86400,
+                                    (totsec % 86400) / 3600,
+                                    (totsec % 3600) / 60,
+                                    totsec % 60) as total
+                        FROM (
+                            SELECT sum(time_elapsed) as totsec
+                            FROM timer_data
+                            WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))
+                            );'''
+                    timer_per_task = self.connexion.execute(total_time_year).fetchone()
+                return timer_per_task[0]
+            except Exception as e:
+                print("exception in total time")
+                raise Exception(e) from e
 
     def time_per_task_today(self) -> str:
         with self.connexion:
@@ -172,3 +200,79 @@ class SqliteStatRepository():
                 dates.append(self.connexion.execute(dates, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchone())
         
         return dates
+
+    
+    def total_time_per_week(self, years : list[int|str] = None) -> list[tuple]:
+        '''Potentially takes a list of years and returns an array of (year, week, week_start, week_end, total_time).'''
+        
+        # If no year, get the first and the last timer to use as beginning and end.
+        if not years:
+            calendar_begining, calendar_ending = self.connexion.execute("SELECT MIN(date), MAX(date) FROM timer_data").fetchone()
+        else:
+            calendar_begining = f'{years[0]}-01-01'
+            calendar_ending = f'{years[-1]}-12-31'
+
+        query = f"""
+                    WITH RECURSIVE dates(year, week, day, date) AS (
+                        VALUES(
+                                strftime('%Y', '{calendar_begining}'),
+                                strftime('%W', '{calendar_begining}'),
+                                strftime('%w', '{calendar_begining}'),
+                                '{calendar_begining}'
+                            )
+                        UNION ALL
+                        SELECT strftime('%Y', DATE(date, '+1 day')),
+                            strftime('%W', DATE(date, '+1 day')),
+                            strftime('%w', DATE(date, '+1 day')),
+                            DATE(date, '+1 day')
+                        FROM dates
+                        WHERE date < '{calendar_ending}'
+                    ),
+                    calendar AS (
+                        SELECT year,
+                            date,
+                            week,
+                            day,
+                            DATE(date, '-' || (CAST(day AS INTEGER) + 1) || ' day', 'weekday 1') as start_of_week,
+                            DATE( date, '+' || (6 - CAST(day AS INTEGER)) || ' day', 'weekday 0') as end_of_week
+                        FROM dates
+                    ),
+                    week_day_count AS (
+                        SELECT year,
+                            date,
+                            week,
+                            start_of_week,
+                            end_of_week,
+                            COUNT(*) OVER (PARTITION BY year, week) as cnt_days
+                        FROM calendar
+                        ORDER BY year
+                    ),
+                    full_weeks AS (
+                        SELECT year,
+                            week,
+                            start_of_week,
+                            end_of_week,
+                            date
+                        FROM week_day_count
+                        WHERE cnt_days = 7
+                    ),
+                    total_time_week AS (
+                        SELECT fw.year,
+                            fw.week,
+                            fw.start_of_week,
+                            fw.end_of_week,
+                            fw.date,
+                            t.time_elapsed,
+                            SUM(COALESCE(t.time_elapsed,0)) OVER (PARTITION BY fw.year, fw.week) as total_time_worked
+                        FROM full_weeks fw
+                            LEFT JOIN timer_data t ON fw.date = t.date
+                    )
+                    SELECT year,
+                        week,
+                        start_of_week,
+                        end_of_week,
+                        total_time_worked
+                    FROM total_time_week
+                    GROUP BY week;
+                """
+        return self.connexion.execute(query).fetchall()
