@@ -5,7 +5,14 @@ import src.shared.database.sqlite_db as db
 from src.web_api.factory import create_flask_app
 
 def create_app(args : list[str]):
-    conf = Config("conf.json")
+    if "--test" in args:
+        try:
+            conf = Config("test_conf.json")
+        except FileNotFoundError:
+            print("No file test_conf.json found at the root of the directory.")
+    else:
+        conf = Config("conf.json")
+
     conn = db.connect(conf.local_database)
     db.create_tables(conn)
     conn.commit()

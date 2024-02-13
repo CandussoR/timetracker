@@ -1,5 +1,6 @@
 from sqlite3 import Connection, connect
 from flask import Flask, g
+from flask_cors import CORS
 from src.web_api.controllers.time_record_controller import time_records_blueprint
 from src.web_api.controllers.task_controller import tasks_blueprint
 from src.web_api.controllers.stats_controller import stats_blueprint
@@ -7,6 +8,7 @@ from src.web_api.controllers.tag_controller import tag_blueprint
 
 def create_flask_app(db_name : str) -> Flask:
     app = Flask(__name__)
+    CORS(app, origins=["http://localhost:5173"])
 
     @app.before_request
     def get_db():
