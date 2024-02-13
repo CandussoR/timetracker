@@ -20,3 +20,11 @@ def get_week_stats():
         return StatService().get_week_total_time(params), 200
     except Exception as e :
         return str(e), 400
+
+@stats_blueprint.get("/stats/task_ratio")
+def get_task_time_ratio():
+    try:
+        params = request.args.to_dict()
+        return StatService().get_task_time_ratio(params)
+    except Exception as e :
+        return str(e), 400

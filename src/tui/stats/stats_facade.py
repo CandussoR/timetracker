@@ -1,6 +1,7 @@
 from sqlite3 import Connection
 
 from src.shared.repositories.stats_repository import SqliteStatRepository
+from src.shared.utils.format_time import format_time
 
 def display_stats(connexion : Connection):
     repo = SqliteStatRepository(connexion=connexion)
@@ -9,11 +10,11 @@ def display_stats(connexion : Connection):
     today_timer = repo.timer_count('today')
     suffix = 's' if today_timer > 1 else ''
     print(f"Today : {today_timer} timer{suffix} ({repo.total_time('today')}).")
-
-    for task, time in repo.time_per_task_today():
+    
+    for _, task, time, ratio in repo.get_task_time_ratio({"period": "day"}):
         task_streak = repo.max_and_current_streaks(task)
         max = "(max streak!)" if task_streak[0][1] == task_streak[0][0] else f"(max : {task_streak[0][0]})"
-        print(f"\t{task} : {time}")
+        print(f"\t{task} : {format_time(time, 'hour')} ({ratio}%)")
         print(f"\t\tCurrent streak : {task_streak[0][1]} {max}")
 
     print(f"\nThis year's average day : {repo.average_day_this_year()}")

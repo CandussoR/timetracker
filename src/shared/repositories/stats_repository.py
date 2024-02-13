@@ -5,7 +5,6 @@ from datetime import datetime
 
 class SqliteStatRepository():
 
-
     SELECT_WEEK_TIMERS = '''
             SELECT *
             FROM timer_data
@@ -19,10 +18,8 @@ class SqliteStatRepository():
                 GROUP BY date
                 );'''
 
-
     def __init__(self, connexion : Optional[Connection] = None, db_name : Optional[str] = None) :
         self.connexion = connexion if connexion is not None else connect(db_name)
-
 
     def timer_count(self, time_span : str) -> int :
         with self.connexion:
@@ -47,7 +44,7 @@ class SqliteStatRepository():
             except Exception as e:
                 print("exception in timer count")
                 raise Exception(e) from e
-            
+
     def total_time(self, time_span : str) -> str :
         with self.connexion:
             try:
@@ -126,7 +123,7 @@ class SqliteStatRepository():
     def average_day_this_year(self) -> str:
         with self.connexion:
             return self.connexion.execute(self.AVG_TIME_DAY, [f"{datetime.now().year}%"]).fetchone()[0]
-            
+
     def average_day_for_year(self, year : Union[str, int]) -> str:
         with self.connexion:
             return self.connexion.execute(self.AVG_TIME_DAY, [f"{str(year)}%"]).fetchone()[0]
@@ -198,13 +195,12 @@ class SqliteStatRepository():
         elif sqlite_weekday == 0:
             for week_delta in list(range(1,number_of_weeks+1)):
                 dates.append(self.connexion.execute(dates, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchone())
-        
+
         return dates
 
-    
     def total_time_per_week(self, years : list[int|str] = None) -> list[tuple]:
         '''Potentially takes a list of years and returns an array of (year, week, week_start, week_end, total_time).'''
-        
+
         # If no year, get the first and the last timer to use as beginning and end.
         if not years:
             calendar_begining, calendar_ending = self.connexion.execute("SELECT MIN(date), MAX(date) FROM timer_data").fetchone()
@@ -274,5 +270,47 @@ class SqliteStatRepository():
                         total_time_worked
                     FROM total_time_week
                     GROUP BY week;
+                """
+        return self.connexion.execute(query).fetchall()
+
+    def get_task_time_ratio(self, params) -> list[tuple]:
+        '''
+            Count time on task during a certain period of time,
+           or time on subtasks of a certain task.
+           Takes a dict with a period key, return a tuple (date, task, total_time, ratio)'''
+        where_clause = ''
+        # if params.get("date") is not None:
+        #     if isinstance(params["date"], str):
+        #         where_clause = f"WHERE date = \'{params['date']}\'"
+            
+        #     if isinstance(params["date"], list):
+        #         [begin, end] = params["date"]
+        #         where_clause = f"WHERE date BETWEEN {begin} AND {end}"
+        if params["period"] == "day":
+            where_clause = "WHERE date = date('now')"
+        elif params["period"] == "week":
+            where_clause = "WHERE date > date('now', 'weekday 0', '-7 days')"
+        elif params["period"] == "month":
+            where_clause = "WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')"
+        else :
+            where_clause = "WHERE strftime('%Y', date) = strftime('%Y', 'now')"
+
+        query = f"""
+                WITH q as (
+                    SELECT date,
+                        t.task_name,
+                        SUM(time_elapsed) as total_time
+                    FROM timer_data
+                    JOIN tasks t on t.id = timer_data.task_id
+                    {where_clause}
+                    GROUP BY task_name
+                )
+                SELECT date,
+                    task_name, 
+                    total_time, 
+                    ROUND((total_time/ (SELECT SUM(total_time) FROM q)*100), 1) as ratio 
+                    FROM q 
+                    GROUP BY task_name
+                    ORDER BY ratio DESC;
                 """
         return self.connexion.execute(query).fetchall()
