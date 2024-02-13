@@ -1,11 +1,11 @@
-from marshmallow import Schema, fields, post_load, validate
+from marshmallow import Schema, fields, validate
 
 class TimeRecordRequestSchema(Schema):
     '''task_id and tag_id are not required because they are set afterwards.'''
     task_id = fields.String(required=False, validate=validate.Length(equal=26))
     date = fields.Date(required=True)
-    time_beginning = fields.Time(required=True)
-    time_ending = fields.Time(required=True)
+    time_beginning = fields.Time(required=True, data_key="timeBeginning")
+    time_ending = fields.Time(required=True, data_key="timeEnding")
     tag_id = fields.String(required=False, allow_none=True, validate=validate.Length(equal=26))
     log = fields.Str(required=False, allow_none=True)
 
