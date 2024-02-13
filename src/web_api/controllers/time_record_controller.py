@@ -30,6 +30,7 @@ def create_time_record():
     req = request.get_json()
     operation_type = req["type"]
     data = req["data"]
+    print(data)
     try:
         service = TimeRecordService()
         time_record = service.post(operation_type, data)

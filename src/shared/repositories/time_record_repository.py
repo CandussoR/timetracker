@@ -62,7 +62,6 @@ class SqliteTimeRecordRepository():
                           date, 
                           time_beginning, 
                           time_ending, 
-                          time_elapsed, 
                           tags.tag, 
                           log  
                    FROM timer_data td

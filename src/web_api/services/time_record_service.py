@@ -25,17 +25,16 @@ class TimeRecordService():
     
     def get_by(self, conditions : dict):
         data = self.repo.get_by(conditions)
-        print(data)
         tr = [TimeRecordResource(*d) for d in data]
-        print(tr)
         return TimeRecordSchema().dump(tr, many=True)
 
     def post(self, time_record_type : str, data : dict) -> str:
         # Forced to use unknown=EXLUDE for Schema validation
-        # because it receives task and tag guids and then try to find their IDs.        
+        # because it receives task and tag guids and then try to find their IDs.     
         time_record = TimeRecordInput()
 
         try:
+            # Only id used to link between tables.
             if task_guid := data["task_guid"]:
                 task_id = SqliteTaskRepository(self.connexion).get_id_from_guid(task_guid)
                 if task_id is None:
@@ -50,7 +49,7 @@ class TimeRecordService():
             print("Key Error, let's move on")
 
         match time_record_type:
-            case "old" :     
+            case "old" :
                 TimeRecordRequestSchema().load(data, unknown=EXCLUDE)
                 time_record.from_dict(data)
                 self.repo.insert_old_timer(time_record)
@@ -86,7 +85,7 @@ class TimeRecordService():
 
         match operation_type:
             case "ending" :     
-                TimeRecordEndingRequestSchema().load(data)
+                TimeRecordEndingRequestSchema().load(data, unknown=EXCLUDE)
                 time_record.from_dict(data)
                 self.repo.update_row_at_ending(time_record)
                 self.connexion.commit()
@@ -97,7 +96,6 @@ class TimeRecordService():
                 self.connexion.commit()
             case _:
                 raise ValidationError("Invalid type.")
-        
         return self.get(time_record.guid)
     
     def update_ending_to_now(self):
