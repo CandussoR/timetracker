@@ -156,15 +156,19 @@ class SqliteStatRepository():
             return self.connexion.execute(max_and_current_streak, [task]).fetchall()
 
     def all_task_streaks(self):
-        for task in self.task_list(self.connexion):
+        task_streaks = []
+        for task in self.task_list():
             streak = self.max_and_current_streaks(task[0])
-            print(f"  Max streak for {task[0]} : {streak[0][0]}")
+            if streak:
+                task_streaks.append((task[0], streak[0][0], streak[0][1]))
+        return sorted(task_streaks, key = lambda x: x[1], reverse = True)
 
     def past_weeks(self, number_of_weeks : int):
         with self.connexion :
             # Gets the dates of a certain number of weeks
             dates = self.calculate_past_weeks_dates(number_of_weeks)
-
+ 
+            weeks = []
             for date in dates:
                 monday, sunday = date
                 total_time_particular_week = '''
@@ -174,13 +178,14 @@ class SqliteStatRepository():
                         FROM timer_data
                         WHERE date BETWEEN ? and ?
                         );'''
-                timer_per_task = self.connexion.execute(total_time_particular_week, [monday, sunday]).fetchone()
-                print(f"Week from Monday {monday} to Sunday {sunday} : \n\t Total time : {timer_per_task[0]}")
+                time_per_week = self.connexion.execute(total_time_particular_week, [monday, sunday]).fetchone()[0]
+                weeks.append((monday, sunday, time_per_week))
+            return weeks
 
     def calculate_past_weeks_dates(self, number_of_weeks : int):
         # Getting the number of current day
         sqlite_weekday = int(self.connexion.execute('''SELECT strftime('%w', 'now');''').fetchone()[0])
-        dates = "SELECT date('now', 'localtime', 'weekday 1', ?), date('now', 'localtime', 'weekday 0', ?)"
+        query = "SELECT date('now', 'localtime', 'weekday 1', ?), date('now', 'localtime', 'weekday 0', ?)"
         dates = []
         day_difference = 7
 
@@ -188,13 +193,13 @@ class SqliteStatRepository():
         # so we need to calculate for sunday, monday, and the others.
         if sqlite_weekday in range(2, 7):
             for week_delta in list(range(1,number_of_weeks+1)):
-                dates.append(self.connexion.execute(dates, [f"-{day_difference * week_delta} days", f"-{day_difference * (week_delta - 1)} days"]).fetchone())
+                dates.append(self.connexion.execute(query, [f"-{day_difference * week_delta} days", f"-{day_difference * (week_delta - 1)} days"]).fetchone())
         elif sqlite_weekday == 1:
             for week_delta in list(range(1,number_of_weeks+1)):
-                dates.append(self.connexion.execute(dates, [f"-{day_difference * week_delta} days", f"-{day_difference * week_delta} days"]).fetchone())
+                dates.append(self.connexion.execute(query, [f"-{day_difference * week_delta} days", f"-{day_difference * week_delta} days"]).fetchone())
         elif sqlite_weekday == 0:
             for week_delta in list(range(1,number_of_weeks+1)):
-                dates.append(self.connexion.execute(dates, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchone())
+                dates.append(self.connexion.execute(query, [f"-{day_difference * (week_delta + 1)} days", f"-{day_difference * week_delta} days"]).fetchone())
 
         return dates
 
