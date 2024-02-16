@@ -1,7 +1,7 @@
 from sqlite3 import connect
 from typing import Optional, Tuple, Union
 from sqlite3.dbapi2 import Connection
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class SqliteStatRepository():
 
@@ -23,7 +23,7 @@ class SqliteStatRepository():
 
     def timer_count(self, time_span : str) -> int :
         with self.connexion:
-            try: 
+            try:
 
                 if time_span == 'today':
                     total_count = "SELECT COUNT(*) FROM timer_data WHERE date(date) = date('now');"
@@ -48,7 +48,7 @@ class SqliteStatRepository():
     def total_time(self, time_span : str) -> str :
         with self.connexion:
             try:
-                if time_span == 'today':    
+                if time_span == 'today':
                     total_time_today = '''SELECT time(sum(time_elapsed), 'unixepoch') FROM timer_data
                             WHERE date(date) = date('now');'''
                     timer_per_task = self.connexion.execute(total_time_today).fetchone()
@@ -68,9 +68,9 @@ class SqliteStatRepository():
                                     (totsec % 86400) / 3600,
                                     (totsec % 3600) / 60,
                                     totsec % 60) as total
-                        FROM ( 
+                        FROM (
                             SELECT sum(time_elapsed) as totsec
-                            FROM timer_data 
+                            FROM timer_data
                             WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
                             );'''
                     timer_per_task = self.connexion.execute(total_time_month).fetchone()
@@ -89,8 +89,15 @@ class SqliteStatRepository():
                     timer_per_task = self.connexion.execute(total_time_year).fetchone()
                 return timer_per_task[0]
             except Exception as e:
-                print("exception in total time")
                 raise Exception(e) from e
+
+    def total_time_per_day_in_range(self, beginning : str, end : str) -> list[tuple]:
+        '''
+            Beginning and end are "YYYY-MM-DD" datestrings.
+            Returns a list of (date, total) tuples.
+        '''
+        query = "SELECT date, SUM(time_elapsed) as total FROM timer_data WHERE date BETWEEN ? AND ? GROUP BY date"
+        return self.connexion.execute(query, [beginning, end]).fetchall()
 
     def time_per_task_today(self) -> str:
         with self.connexion:
@@ -167,7 +174,7 @@ class SqliteStatRepository():
         with self.connexion :
             # Gets the dates of a certain number of weeks
             dates = self.calculate_past_weeks_dates(number_of_weeks)
- 
+
             weeks = []
             for date in dates:
                 monday, sunday = date
@@ -287,12 +294,13 @@ class SqliteStatRepository():
         # if params.get("date") is not None:
         #     if isinstance(params["date"], str):
         #         where_clause = f"WHERE date = \'{params['date']}\'"
-            
+
         #     if isinstance(params["date"], list):
         #         [begin, end] = params["date"]
         #         where_clause = f"WHERE date BETWEEN {begin} AND {end}"
+        date = "date('now')" if params.get("date") is None else f"\'{params['date']}\'"
         if params["period"] == "day":
-            where_clause = "WHERE date = date('now')"
+            where_clause = f"WHERE date = {date}"
         elif params["period"] == "week":
             where_clause = "WHERE date > date('now', 'weekday 0', '-7 days')"
         elif params["period"] == "month":
@@ -311,11 +319,55 @@ class SqliteStatRepository():
                     GROUP BY task_name
                 )
                 SELECT date,
-                    task_name, 
-                    total_time, 
-                    ROUND((total_time/ (SELECT SUM(total_time) FROM q)*100), 1) as ratio 
-                    FROM q 
+                    task_name,
+                    total_time,
+                    ROUND((total_time/ (SELECT SUM(total_time) FROM q)*100), 1) as ratio
+                    FROM q
                     GROUP BY task_name
                     ORDER BY ratio DESC;
                 """
         return self.connexion.execute(query).fetchall()
+    
+    def get_task_time_per_week_in_month(self, month : str):
+        '''
+            Returns (num_week, task_name, time_per_task, time_per_week, ratio).
+        '''
+        month = f"\'{month}\'"
+        query= f'''
+                WITH sub AS (
+                    SELECT date,
+                        task_name,
+                        strftime('%W', date) as num_week,
+                        time_elapsed
+                    FROM timer_data
+                        JOIN tasks ON timer_data.task_id = tasks.id
+                    WHERE strftime('%Y-%m', date) LIKE {month}
+                ),
+                sub2 AS (
+                    SELECT date,
+                        num_week,
+                        task_name,
+                        SUM(time_elapsed) OVER (PARTITION BY task_name, num_week) AS time_per_task,
+                        SUM(time_elapsed) OVER (PARTITION BY num_week) as time_per_week,
+                        ROW_NUMBER() OVER (PARTITION BY num_week, task_name) as row_num
+                    FROM sub
+                    ORDER BY num_week
+                ),
+                sub3 AS (
+                    SELECT date,
+                        num_week,
+                        task_name,
+                        time_per_task,
+                        time_per_week
+                    FROM sub2
+                    WHERE row_num = 1
+                )
+                SELECT num_week, 
+                    task_name, 
+                    time_per_task, 
+                    time_per_week,
+                    ROUND((time_per_task/time_per_week)*100, 1) as ratio
+                FROM sub3;
+                '''
+        return self.connexion.execute(query).fetchall()
+

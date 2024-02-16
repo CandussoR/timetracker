@@ -2,6 +2,9 @@ from typing import Optional
 from flask import g
 from src.shared.repositories.stats_repository import SqliteStatRepository
 from src.shared.utils.format_time import format_time
+from datetime import datetime, timedelta
+import traceback
+
 
 
 class StatService():
@@ -68,8 +71,89 @@ class StatService():
             else :
                 data.append({"task" : task, "time": time, "formatted": format_time(time, 'hour'), "ratio" : ratio})
         return data
-            
+    
+    def get_generic_week(self):
+        # 1.1 Get all the dates for the current week
+        # assuming Monday is the start of the week
+        today = datetime.today()
+        start_of_week = today - timedelta(days=today.weekday())
+        days_in_week = [start_of_week + timedelta(days=i) for i in range(7)]
+        days_in_week = [*map(lambda x : x.strftime('%Y-%m-%d'), days_in_week)]
 
+        # 1.2. Get task_time_ratio for every day of the week.
+        ratios = []
+        for d in days_in_week:
+            ratios.append(self.repo.get_task_time_ratio({"period": "day", "date": d}))
 
-            
+        # Too much coupling with apexcharts ?
+        # 1.3. Format data object for apexcharts loading StackedBar with VueJs 
+        unique_tasks = {task for r in ratios for _, task, _, _ in r}
+        # 1.3.2. Creating an object with values prefilled for each day
+        stacked = []
+        for t in unique_tasks:
+            stacked.append({"name" : t, "data" : [0] * 7})
+        stacked_tasks = [obj["name"] for obj in stacked]
 
+        for sublist in ratios:
+            for item in sublist:
+                index = stacked_tasks.index(item[1])
+                stacked[index]["data"][ratios.index(sublist)] = item[3]
+
+        # 2. Total time per day of the week
+        days_line_chart = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
+        days_line_chart = {"name" : "Total time", "data" : [time for _,time in days_line_chart]}
+        len_fill = 7 - len(days_line_chart["data"])
+        if len_fill:
+            days_line_chart["data"].extend([None] * len_fill)
+
+        return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
+    
+    def get_generic_month(self):
+        try:
+            # 1.2. Get task_time_ratio for every day of the week.
+            month = datetime.today().strftime('%Y-%m')
+            ratios = []
+            ratios.extend(self.repo.get_task_time_per_week_in_month(month))
+
+            weeks = {w for w,_,_,_,_ in ratios}
+            tasks = {t for _,t,_,_,_ in ratios}
+
+            stacked = []
+            for w in weeks:
+                stacked.append({"name" : w, "data" : [0] * len(tasks)})
+            for week,task,_,_,ratio in ratios:
+                i_week = [i for i, w in enumerate(weeks) if w == week][0]
+                i_task = [i for i, t in enumerate(tasks) if t == task][0]
+                stacked[i_week]["data"][i_task] = ratio
+            print("stacked", stacked)
+            # for d in days_in_week:
+            #     ratios.append(self.repo.get_task_time_ratio({"period": "day", "date": d}))
+
+            # # Too much coupling with apexcharts ?
+            # # 1.3. Format data object for apexcharts loading StackedBar with VueJs 
+            # unique_tasks = {task for r in ratios for _, task, _, _ in r}
+            # # 1.3.2. Creating an object with values prefilled for each day
+            # stacked = []
+            # for t in unique_tasks:
+            #     stacked.append({"name" : t, "data" : [0] * 7})
+            # stacked_tasks = [obj["name"] for obj in stacked]
+
+            # for sublist in ratios:
+            #     for item in sublist:
+            #         index = stacked_tasks.index(item[1])
+            #         stacked[index]["data"][ratios.index(sublist)] = item[3]
+
+            # # 2. Total time per day of the week
+            # days_line_chart = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
+            # days_line_chart = {"name" : "Total time", "data" : [time for _,time in days_line_chart]}
+            # len_fill = 7 - len(days_line_chart["data"])
+            # if len_fill:
+            #     days_line_chart["data"].extend([None] * len_fill)
+
+            # return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}     
+            return {"month": stacked}   
+        except Exception as e:
+            print(e)
+            tb = traceback.format_exc()
+            print(tb)
+            raise Exception(e) from e
