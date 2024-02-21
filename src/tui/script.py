@@ -73,9 +73,9 @@ def start(conf : Config, db_name : str):
                         number_of_sets = len(sets)
                         print(f"    SET N°{i+1}/{number_of_sets}")
                         time_record = set_record(db_name)
-                        launch_clock_facade(db_name, time_record, "timer")
-                        start_clock(db_name, set[0] * 60)
-                        launch_pause(set[1] * 60)
+                        launch_clock_facade(db_name, time_record, "timer", set[0] * 60)
+                        end_of_clock_facade(db_name, conf, time_record)
+                        launch_pause(set[1] * 60, conf)
                 except KeyboardInterrupt :
                     continue
 
@@ -109,16 +109,21 @@ def start(conf : Config, db_name : str):
             else:
                 print("Invalid input, enter a number between 1 and 9.")
 
-    except ValueError:
+    except (ValueError, KeyboardInterrupt):
         print("See ya!\n")
 
 
-def launch_clock_facade(db_name : str, time_record : TimeRecordInput, clock : Literal["timer", "stopwatch"]) :
-    if clock == "timer":
+def launch_clock_facade(db_name : str, time_record : TimeRecordInput, clock : Literal["timer", "stopwatch"], duration : int | None = None) :
+    if duration:
+        time_in_minutes = duration
+    elif (not duration) and clock == "timer":
         time_in_minutes = int(input("How long ? > "))*60
+
     input("Press key when ready.")
+
     time_record.time_beginning = datetime.now()
     insert_record(db_name, time_record)
+
     if clock == "timer":
         start_clock("timer", time_in_minutes)
     else :
