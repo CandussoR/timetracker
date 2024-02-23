@@ -1,27 +1,29 @@
 from dataclasses import dataclass, fields
+from datetime import datetime, timedelta
 import time
 
 
-def timer(t):
-    for i in reversed(range(0, t)):
+def timer(time_beginning : datetime, t_in_seconds: int):
+    end_time = time_beginning + timedelta(seconds=t_in_seconds)
+
+    while datetime.now() < end_time:
         try:
-            mins = t // 60
-            seconds = t % 60
-            time_format = '{:02d}:{:02d}'.format(mins, seconds)
+            count = end_time - datetime.now()
+            mins, seconds = divmod(count.seconds, 60)
+            time_format = f'{mins:02d}:{seconds:02d}'
             print(time_format, end="\r")
             time.sleep(1)
-            t -= 1
         except KeyboardInterrupt:
-            break
+            break;
 
-def stopwatch(t=0):
+
+def stopwatch(time_beginning : datetime, t=0):
     while True:
         try:
-            mins = t // 60
-            seconds = t % 60
-            time_format = '{:02d}:{:02d}'.format(mins, seconds)
+            count = datetime.now() - time_beginning
+            mins, seconds = divmod(count.seconds, 60)
+            time_format = f'{mins:02d}:{seconds:02d}'
             print(time_format, end="\r")
             time.sleep(1)
-            t += 1
         except KeyboardInterrupt:
             break

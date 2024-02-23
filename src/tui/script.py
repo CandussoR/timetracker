@@ -1,5 +1,3 @@
-
-
 # Prompt
 from datetime import datetime
 import os
@@ -86,7 +84,7 @@ def start(conf : Config, db_name : str):
                     connexion.close()
                 except KeyboardInterrupt:
                     continue
-                
+
             elif user_input == 6:
                 time_record = set_record(db_name, old = True)
                 connexion = sqlite_db.connect(db_name)
@@ -113,11 +111,16 @@ def start(conf : Config, db_name : str):
         print("See ya!\n")
 
 
-def launch_clock_facade(db_name : str, time_record : TimeRecordInput, clock : Literal["timer", "stopwatch"], duration : int | None = None) :
+def launch_clock_facade(
+    db_name: str,
+    time_record: TimeRecordInput,
+    clock: Literal["timer", "stopwatch"],
+    duration: int | None = None,
+):
     if duration:
         time_in_minutes = duration
     elif (not duration) and clock == "timer":
-        time_in_minutes = int(input("How long ? > "))*60
+        time_in_minutes = int(input("How long ? > ")) * 60
 
     input("Press key when ready.")
 
@@ -125,9 +128,9 @@ def launch_clock_facade(db_name : str, time_record : TimeRecordInput, clock : Li
     insert_record(db_name, time_record)
 
     if clock == "timer":
-        start_clock("timer", time_in_minutes)
+        start_clock("timer", time_record.time_beginning, time_in_minutes)
     else :
-        start_clock("stopwatch")
+        start_clock("stopwatch", time_record.time_beginning)
 
 
 def end_of_clock_facade(db_name : str, conf : Config, time_record : TimeRecordInput):
@@ -163,7 +166,7 @@ def insert_record(db_name : str, time_record : TimeRecordInput) :
         repo = time_record_repository.SqliteTimeRecordRepository(connexion = connexion)
         repo.insert_beginning(time_record)
         connexion.commit()
-        
+
 
 def update_record(db_name : str, time_record : TimeRecordInput):
     with sqlite_db.connect(db_name) as connexion:
@@ -172,20 +175,24 @@ def update_record(db_name : str, time_record : TimeRecordInput):
         connexion.commit() 
 
 
-def start_clock(clock : Literal["timer", "stopwatch"], times_in_minutes : Optional[int] = None) :
-    if clock == "timer":
-        clocks.timer(times_in_minutes)
-    if clock == "stopwatch":
-        clocks.stopwatch()
+def start_clock(
+    clock: Literal["timer", "stopwatch"],
+    time_beginning: Optional[datetime] = None,
+    times_in_minutes: Optional[int] = None,
+):
+    if clock == "timer" and time_beginning:
+        clocks.timer(time_beginning, times_in_minutes)
+    elif clock == "stopwatch":
+        clocks.stopwatch(time_beginning)
 
 
-def launch_pause(time_in_minutes : int | None, conf: Config):
+def launch_pause(time_in_minutes: int | None, conf: Config):
     try:
         if not time_in_minutes :
             time_in_minutes = int(input("How long ? > "))*60
     except KeyboardInterrupt:
         raise KeyboardInterrupt
-    start_clock("timer", time_in_minutes)
+    start_clock("timer", time_beginning=datetime.now(), times_in_minutes=time_in_minutes)
     print("Back at it!")
     end_ring(conf)
 
@@ -207,6 +214,6 @@ def enter_log() -> str:
             log = piece
         else:
             log += f"  \n{piece}"        
-        
+
 if __name__ == '__main__':
     start()
