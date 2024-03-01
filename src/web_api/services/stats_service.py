@@ -25,11 +25,11 @@ class StatService():
                 },
                 "monthly" : {
                     "count": self.repo.timer_count("month"),
-                    "time" : format_time(self.repo.total_time("month"), "day")
+                    "time" : format_time(self.repo.total_time("month") or 0, "day")
                 },
                 "yearly" : {
                     "count": self.repo.timer_count("year"),
-                    "time" : format_time(self.repo.total_time("year"), "day")
+                    "time" : format_time(self.repo.total_time("year") or 0, "day")
                 }
             }
             return home
@@ -57,7 +57,6 @@ class StatService():
            or at least one param.
         '''
         res = self.repo.get_task_time_ratio(params)
-        print(res)
         if res == None:
             return []
         
@@ -128,7 +127,7 @@ class StatService():
             i_task = [i for i, t in enumerate(tasks) if t == task][0]
             stacked[i_task]["data"][i_week] = ratio
 
-        # # 2. Total time per day of the week
+        # # 2. Total time per week of the month
         weeks = list(weeks)
         weeks_line_chart = self.repo.total_time_per_week_in_range(weeks[0], weeks[-1])
         weeks_line_chart = {"name" : "Total time", "data" : [time for _,time in weeks_line_chart]}
@@ -139,7 +138,7 @@ class StatService():
         return {"weeks" : weeks, "stackedBarChart" : stacked, "weeksLineChart": weeks_line_chart}       
 
     def get_generic_year(self):
-        # 1.2. Get task_time_ratio for every day of the week.
+        # 1.2. Get task_time_ratio for every month of year.
         now = datetime.now()
         year = now.strftime('%Y')
 
@@ -160,7 +159,6 @@ class StatService():
         # # 2. Total time per month of year
         month = list(months)
         months_line_chart = self.repo.total_time_per_month_in_range(month[0], month[-1])
-        print(months_line_chart)
         months_line_chart = {"name" : "Total time", "data" : [time for _,time in months_line_chart]}
         len_fill = 12 - len(months_line_chart["data"])
         if len_fill:
