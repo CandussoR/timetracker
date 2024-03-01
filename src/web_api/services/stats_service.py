@@ -3,7 +3,7 @@ from flask import g
 from src.shared.repositories.stats_repository import SqliteStatRepository
 from src.shared.utils.format_time import format_time
 from datetime import datetime, timedelta
-import traceback
+import calendar
 
 
 
@@ -17,19 +17,19 @@ class StatService():
             home = {
                 "daily" : {
                     "count": self.repo.timer_count("today"),
-                    "time" : self.repo.total_time("today")
+                    "time" : format_time(self.repo.total_time("today") or 0, "hour")
                 }, 
                 "weekly" : {
                     "count": self.repo.timer_count("week"),
-                    "time" : self.repo.total_time("week")
+                    "time" : format_time(self.repo.total_time("week") or 0, "hour")
                 },
                 "monthly" : {
                     "count": self.repo.timer_count("month"),
-                    "time" : self.repo.total_time("month")
+                    "time" : format_time(self.repo.total_time("month"), "day")
                 },
                 "yearly" : {
                     "count": self.repo.timer_count("year"),
-                    "time" : self.repo.total_time("year")
+                    "time" : format_time(self.repo.total_time("year"), "day")
                 }
             }
             return home
@@ -109,51 +109,64 @@ class StatService():
         return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
     
     def get_generic_month(self):
-        try:
-            # 1.2. Get task_time_ratio for every day of the week.
-            month = datetime.today().strftime('%Y-%m')
-            ratios = []
-            ratios.extend(self.repo.get_task_time_per_week_in_month(month))
+        # 1.2. Get task_time_ratio for every day of the week.
+        now = datetime.now()
+        month = now.strftime('%Y-%m')
+        number_of_weeks = len(calendar.monthcalendar(now.year, now.month))
 
-            weeks = {w for w,_,_,_,_ in ratios}
-            tasks = {t for _,t,_,_,_ in ratios}
+        ratios = []
+        ratios.extend(self.repo.get_task_time_per_week_in_month(month))
 
-            stacked = []
-            for w in weeks:
-                stacked.append({"name" : w, "data" : [0] * len(tasks)})
-            for week,task,_,_,ratio in ratios:
-                i_week = [i for i, w in enumerate(weeks) if w == week][0]
-                i_task = [i for i, t in enumerate(tasks) if t == task][0]
-                stacked[i_week]["data"][i_task] = ratio
-            print("stacked", stacked)
-            # for d in days_in_week:
-            #     ratios.append(self.repo.get_task_time_ratio({"period": "day", "date": d}))
+        weeks = sorted(list({w for w,_,_,_,_ in ratios}))  
+        tasks = {t for _,t,_,_,_ in ratios}
 
-            # # Too much coupling with apexcharts ?
-            # # 1.3. Format data object for apexcharts loading StackedBar with VueJs 
-            # unique_tasks = {task for r in ratios for _, task, _, _ in r}
-            # # 1.3.2. Creating an object with values prefilled for each day
-            # stacked = []
-            # for t in unique_tasks:
-            #     stacked.append({"name" : t, "data" : [0] * 7})
-            # stacked_tasks = [obj["name"] for obj in stacked]
+        stacked = []
+        for t in tasks:
+            stacked.append({"name" : t, "data" : [0] * number_of_weeks})
+        for week,task,_,_,ratio in ratios:
+            i_week = [i for i, w in enumerate(weeks) if w == week][0]
+            i_task = [i for i, t in enumerate(tasks) if t == task][0]
+            stacked[i_task]["data"][i_week] = ratio
 
-            # for sublist in ratios:
-            #     for item in sublist:
-            #         index = stacked_tasks.index(item[1])
-            #         stacked[index]["data"][ratios.index(sublist)] = item[3]
+        # # 2. Total time per day of the week
+        weeks = list(weeks)
+        weeks_line_chart = self.repo.total_time_per_week_in_range(weeks[0], weeks[-1])
+        weeks_line_chart = {"name" : "Total time", "data" : [time for _,time in weeks_line_chart]}
+        len_fill = number_of_weeks - len(weeks_line_chart["data"])
+        if len_fill:
+            weeks_line_chart["data"].extend([None] * len_fill)
 
-            # # 2. Total time per day of the week
-            # days_line_chart = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
-            # days_line_chart = {"name" : "Total time", "data" : [time for _,time in days_line_chart]}
-            # len_fill = 7 - len(days_line_chart["data"])
-            # if len_fill:
-            #     days_line_chart["data"].extend([None] * len_fill)
+        return {"weeks" : weeks, "stackedBarChart" : stacked, "weeksLineChart": weeks_line_chart}       
 
-            # return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}     
-            return {"month": stacked}   
-        except Exception as e:
-            print(e)
-            tb = traceback.format_exc()
-            print(tb)
-            raise Exception(e) from e
+    def get_generic_year(self):
+        # 1.2. Get task_time_ratio for every day of the week.
+        now = datetime.now()
+        year = now.strftime('%Y')
+
+        ratios = []
+        ratios.extend(self.repo.get_task_time_per_month_in_year(year))
+
+        months = sorted(list({m for m,_,_,_,_ in ratios}))  
+        tasks = {t for _,t,_,_,_ in ratios}
+
+        stacked = []
+        for t in tasks:
+            stacked.append({"name" : t, "data" : [0] * 12})
+        for month,task,_,_,ratio in ratios:
+            i_month = [i for i, m in enumerate(months) if m == month][0]
+            i_task = [i for i, t in enumerate(tasks) if t == task][0]
+            stacked[i_task]["data"][i_month] = ratio
+
+        # # 2. Total time per month of year
+        month = list(months)
+        months_line_chart = self.repo.total_time_per_month_in_range(month[0], month[-1])
+        print(months_line_chart)
+        months_line_chart = {"name" : "Total time", "data" : [time for _,time in months_line_chart]}
+        len_fill = 12 - len(months_line_chart["data"])
+        if len_fill:
+            months_line_chart["data"].extend([None] * len_fill)
+
+        return {"months" : months, 
+                "stackedBarChart" : stacked, 
+                "monthsLineChart": months_line_chart, 
+                "weekLineChart": self.get_week_total_time({"years[]" : year})}

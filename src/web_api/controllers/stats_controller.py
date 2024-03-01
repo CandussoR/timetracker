@@ -42,3 +42,10 @@ def def_generic_month_stats():
         return StatService().get_generic_month(), 200
     except Exception as e:
         return str(e), 400
+
+@stats_blueprint.get("/stats/generic/year")
+def def_generic_year_stats():
+    try:
+        return StatService().get_generic_year(), 200
+    except Exception as e:
+        return str(e), 400
