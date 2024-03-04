@@ -13,23 +13,31 @@ class StatService():
         self.repo = SqliteStatRepository(self.connexion)
 
     def get_home_stats(self):
+        #TODO : Make a decision regarding the way I'm sending time to the front. Array or str ?
         try: 
+            mean_week = self.repo.mean_time_per_period("week")
+            formatted_mean_week = format_time(mean_week, "day") if mean_week > 86400 else format_time(mean_week, "hour")
+            mean_month = self.repo.mean_time_per_period("month")
+            formatted_mean_month = format_time(mean_month, "day") if mean_month > 86400 else format_time(mean_month, "hour")
             home = {
                 "daily" : {
                     "count": self.repo.timer_count("today"),
-                    "time" : format_time(self.repo.total_time("today") or 0, "hour")
+                    "time" : format_time(self.repo.total_time("today") or 0, "hour").split(":"),
+                    "mean" : format_time(self.repo.mean_time_per_period("day"), "hour").split(":")
                 }, 
                 "weekly" : {
                     "count": self.repo.timer_count("week"),
-                    "time" : format_time(self.repo.total_time("week") or 0, "hour")
+                    "time" : format_time(self.repo.total_time("week") or 0, "hour").split(":"),
+                    "mean": formatted_mean_week.split(":")
                 },
                 "monthly" : {
                     "count": self.repo.timer_count("month"),
-                    "time" : format_time(self.repo.total_time("month") or 0, "day")
+                    "time" : format_time(self.repo.total_time("month") or 0, "day").split(":"),
+                    "mean" : formatted_mean_month.split(":")
                 },
                 "yearly" : {
                     "count": self.repo.timer_count("year"),
-                    "time" : format_time(self.repo.total_time("year") or 0, "day")
+                    "time" : format_time(self.repo.total_time("year") or 0, "day").split(":")
                 }
             }
             return home
@@ -71,6 +79,7 @@ class StatService():
                 data.append({"task" : task, "time": time, "formatted": format_time(time, 'hour'), "ratio" : ratio})
         return data
     
+    
     def get_generic_week(self):
         # 1.1 Get all the dates for the current week
         # assuming Monday is the start of the week
@@ -107,6 +116,7 @@ class StatService():
 
         return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
     
+
     def get_generic_month(self):
         # 1.2. Get task_time_ratio for every day of the week.
         now = datetime.now()
@@ -135,7 +145,8 @@ class StatService():
         if len_fill:
             weeks_line_chart["data"].extend([None] * len_fill)
 
-        return {"weeks" : weeks, "stackedBarChart" : stacked, "weeksLineChart": weeks_line_chart}       
+        return {"weeks" : weeks, "stackedBarChart" : stacked, "weeksLineChart": weeks_line_chart }
+
 
     def get_generic_year(self):
         # 1.2. Get task_time_ratio for every month of year.
