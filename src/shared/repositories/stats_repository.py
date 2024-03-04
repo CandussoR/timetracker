@@ -1,5 +1,5 @@
 from sqlite3 import connect
-from typing import Optional, Tuple, Union
+from typing import Literal, Optional, Tuple, Union
 from sqlite3.dbapi2 import Connection
 from datetime import datetime, timedelta
 
@@ -273,13 +273,6 @@ class SqliteStatRepository():
            or time on subtasks of a certain task.
            Takes a dict with a period key, return a tuple (date, task, total_time, ratio)'''
         where_clause = ''
-        # if params.get("date") is not None:
-        #     if isinstance(params["date"], str):
-        #         where_clause = f"WHERE date = \'{params['date']}\'"
-
-        #     if isinstance(params["date"], list):
-        #         [begin, end] = params["date"]
-        #         where_clause = f"WHERE date BETWEEN {begin} AND {end}"
         date = "date('now')" if params.get("date") is None else f"\'{params['date']}\'"
         if params["period"] == "day":
             where_clause = f"WHERE date = {date}"
@@ -451,3 +444,30 @@ class SqliteStatRepository():
             ORDER BY month ASC;
             '''
         return self.connexion.execute(query, (month1, month2)).fetchall()
+    
+    def mean_time_per_period(self, period : Literal["day", "week", "month", "year"]) -> int:
+        print(period)
+        match period:
+            case "day":
+                query = '''WITH f AS (
+                            SELECT SUM(time_elapsed) OVER (PARTITION BY date) as total_day, ROW_NUMBER() OVER (PARTITION BY date) as row_num 
+                            FROM timer_data 
+                            WHERE strftime('%Y', date) = strftime('%Y', 'now')) 
+                           SELECT AVG(total_day) as mean_day FROM f WHERE row_num= 1;'''
+                return self.connexion.execute(query).fetchone()[0]
+            case "week":
+                query = '''WITH f AS (
+                            SELECT SUM(time_elapsed) OVER (PARTITION BY strftime('%W', date)) as total_week, ROW_NUMBER() OVER (PARTITION BY strftime('%W', date)) as row_num 
+                            FROM timer_data 
+                            WHERE strftime('%Y', date) = strftime('%Y', 'now')) 
+                            SELECT AVG(total_week) as mean_week FROM f WHERE row_num = 1;'''
+                return self.connexion.execute(query).fetchone()[0]
+            case "month":
+                query = '''WITH f AS (
+                            SELECT SUM(time_elapsed) OVER (PARTITION BY strftime('%Y-%m', date)) as total_week, ROW_NUMBER() OVER (PARTITION BY strftime('%Y-%m', date)) as row_num 
+                            FROM timer_data 
+                            WHERE strftime('%Y', date) = strftime('%Y', 'now')) 
+                            SELECT AVG(total_week) as mean_week FROM f WHERE row_num = 1;'''
+                return self.connexion.execute(query).fetchone()[0]
+            case "year":
+                raise NotImplementedError('Not implemented yet.')
