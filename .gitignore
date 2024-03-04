@@ -7,3 +7,10 @@ __pycache__/
 *conf.json
 todo.md
 *.mp3
+tests/
+projet.md
+end_of_year_report.py
+requirements2.txt
+test_logs.py
+task_logs.py
+add_uuid.py
