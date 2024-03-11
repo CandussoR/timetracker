@@ -10,8 +10,8 @@ from src.web_api.schemas.time_record_schema import TimeRecordBeginningRequestSch
 
 
 class TimeRecordService():
-    def __init__(self):
-        self.connexion = g._database
+    def __init__(self, db : str | None = None):
+        self.connexion = db if db is not None else g._database 
         self.repo = SqliteTimeRecordRepository(self.connexion)
     
 
@@ -94,6 +94,7 @@ class TimeRecordService():
                 time_record.from_dict(data)
                 self.repo.update_timer(time_record)
                 self.connexion.commit()
+                self.repo.update_elapsed_time(time_record)
             case _:
                 raise ValidationError("Invalid type.")
         return self.get(time_record.guid)
