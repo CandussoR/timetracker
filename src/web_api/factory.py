@@ -1,4 +1,5 @@
-from sqlite3 import Connection, connect
+from sqlite3 import Connection
+import src.shared.database.sqlite_db as sqlite_db
 from flask import Flask, g
 from flask_cors import CORS
 from src.web_api.controllers.time_record_controller import time_records_blueprint
@@ -14,16 +15,12 @@ def create_flask_app(db_name : str) -> Flask:
     def get_db():
         db = getattr(g, '_database', None)
         if db is None:
-            db = g._database = connect(db_name)
-            print("We are connected !")
-        # return db
-
+            db = g._database = sqlite_db.connect(db_name)
     @app.teardown_appcontext
     def close_connection(exception):
         db = getattr(g, '_database', None)
         if db is not None:
             db.close()
-            print("disconnecting")
 
     app.register_blueprint(time_records_blueprint)
     app.register_blueprint(tasks_blueprint)
