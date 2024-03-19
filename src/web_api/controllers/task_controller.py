@@ -1,4 +1,5 @@
 import json
+from sqlite3 import IntegrityError
 from flask import Blueprint, request
 from marshmallow import ValidationError
 
@@ -39,10 +40,12 @@ def update_task():
         return str(e), 500
 
 
-@tasks_blueprint.route("/tasks/<guid>", methods=["DELETE"])
+@tasks_blueprint.route("/task/<guid>", methods=["DELETE"])
 def delete_task(guid : str):
     service = TaskService()
     try:
         return service.delete(guid)
+    except IntegrityError as e:
+        return "The task couldn't be deleted because it is linked to existing timers.", 400
     except Exception as e:
-        return str(e)
+        return str(e), 500

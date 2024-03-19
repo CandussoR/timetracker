@@ -14,3 +14,4 @@ requirements2.txt
 test_logs.py
 task_logs.py
 add_uuid.py
+db_transfer.py
