@@ -45,3 +45,4 @@ class TagService():
         UlidSchema().load({"guid" : guid})
         self.repo.delete(guid)
         self.connexion.commit()
+        return "Successfully deleted."

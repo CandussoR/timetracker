@@ -1,3 +1,4 @@
+from sqlite3 import IntegrityError
 from flask import Blueprint, request
 from marshmallow import ValidationError
 
@@ -54,7 +55,10 @@ def update_tag():
 @tag_blueprint.route("/tag/<guid>", methods=["DELETE"])
 def delete_tag(guid : str):
     try:
-        TagService().delete(guid)
-        return "Deleted", 200
+        return TagService().delete(guid), 200
+    except ValidationError as e:
+        return "The guid is incorrect.", 203
+    except IntegrityError as e:
+        return "The tag couldn't be deleted because it is linked to existing timers.", 400
     except Exception as e:
-        return str(e), 400
+        return str(e), 500
