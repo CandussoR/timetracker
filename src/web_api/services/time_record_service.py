@@ -23,7 +23,19 @@ class TimeRecordService():
             tr = TimeRecordResource(*data)
             return TimeRecordSchema().dump(tr)
     
-    def get_by(self, conditions : dict):
+    def get_by(self, params : dict):
+        # Converting ImmutableMultiDict to dict
+        conditions = {}
+        for k in params :
+            if k == "week[]":
+                continue
+            else:
+                conditions[k] = params[k]
+        if "week[]" in params:
+            # keeping the camel case to go with rangeBeginning etc.
+            # parsing like this for the bindings in the sqlite query and passing the dictionary : less hassle, but coupled
+            [conditions["weekStart"], conditions["weekEnd"]] = params.getlist("week[]")
+        # To business
         data = self.repo.get_by(conditions)
         tr = [TimeRecordResource(*d) for d in data]
         return TimeRecordSchema().dump(tr, many=True)
@@ -93,8 +105,9 @@ class TimeRecordService():
                 TimeRecordRequestSchema().load(data, unknown=EXCLUDE)
                 time_record.from_dict(data)
                 self.repo.update_timer(time_record)
-                self.connexion.commit()
                 self.repo.update_elapsed_time(time_record)
+                self.connexion.commit()
+
             case _:
                 raise ValidationError("Invalid type.")
         return self.get(time_record.guid)
