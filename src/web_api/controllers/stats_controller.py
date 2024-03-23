@@ -50,3 +50,11 @@ def def_generic_year_stats():
         return StatService().get_generic_year(), 200
     except Exception as e:
         return str(e), 400
+
+
+@stats_blueprint.get("/stats/generic/custom")
+def get_custom_stats():
+    try:
+        StatService().get_custom_stats(request.args)
+    except Exception as e:
+        return str(e), 500

@@ -3,6 +3,7 @@ from flask import g
 from src.shared.repositories.stats_repository import SqliteStatRepository
 from src.shared.utils.format_time import format_time
 from datetime import datetime, timedelta
+from werkzeug.datastructures import ImmutableMultiDict
 import calendar
 
 
@@ -60,10 +61,28 @@ class StatService():
     
     def get_task_time_ratio(self, params : dict):
         '''
-           Returns the total time and ratio for a task during a certain period.
-           params can be `{"period" : year|month|week|day, "task" : a task, "tag" : a tag}`
+           params can be `{"period" : year|month|week|day, "date" : string, list[str], None}`
            or at least one param.
+           Returns the total time and ratio for a task during a certain period.
         '''
+        date = params.get("date")
+
+        if date is None :
+            today = datetime.today()
+            match(params["period"]):
+                case "day":
+                    params["date"] = today.strftime('%Y-%m-%d')
+                case "week":
+                    start_of_week = today - timedelta(days=today.weekday())
+                    params["date"] = start_of_week.strftime('%Y-%m-%d')
+                case "month":
+                    params["date"] = today.strftime('%Y-%m')
+                case "year":
+                    params["date"] = str(today.year)
+        if isinstance(date, list):
+            params["rangeBeginning"], params["rangeEnding"] = date
+            del params["date"]
+
         res = self.repo.get_task_time_ratio(params)
         if res == None:
             return []
@@ -179,3 +198,28 @@ class StatService():
                 "stackedBarChart" : stacked, 
                 "monthsLineChart": months_line_chart, 
                 "weekLineChart": self.get_week_total_time({"years[]" : year})}
+    
+
+    def get_custom_stats(self, params : ImmutableMultiDict):
+        '''
+            possible keys :
+                    "period", "date", "week", "year", "month", "rangeBeginning", "rangeEnd", "task", "subtask", "tag", "logs"
+        '''
+        # Converting ImmutableMultiDict to dict
+        conditions = {}
+        for k in params :
+            if k == "week[]":
+                continue
+            else:
+                conditions[k] = params[k]
+        if "week[]" in params:
+            # keeping the camel case to go with rangeBeginning etc.
+            # we don't do bindings but fstrings for the stats repo, so...
+            [conditions["weekStart"], conditions["weekEnd"]] = params.getlist("week[]")
+
+        if not conditions["tag"] or (conditions["task"] and conditions["subtask"]):
+            task_time_ratio = self.get_task_time_ratio({"period" : conditions["period"]})
+        
+        # Envoyer plutôt le temps par jour etc. sinon
+            
+
