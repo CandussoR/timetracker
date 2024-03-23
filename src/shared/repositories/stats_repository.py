@@ -269,20 +269,11 @@ class SqliteStatRepository():
 
     def get_task_time_ratio(self, params) -> list[tuple]:
         '''
-            Count time on task during a certain period of time,
+           Count time on task during a certain period of time,
            or time on subtasks of a certain task.
-           Takes a dict with a period key, return a tuple (date, task, total_time, ratio)'''
-        where_clause = ''
-        date = "date('now')" if params.get("date") is None else f"\'{params['date']}\'"
-        if params["period"] == "day":
-            where_clause = f"WHERE date = {date}"
-        elif params["period"] == "week":
-            where_clause = "WHERE date > date('now', 'weekday 0', '-7 days')"
-        elif params["period"] == "month":
-            where_clause = "WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')"
-        else :
-            where_clause = "WHERE strftime('%Y', date) = strftime('%Y', 'now')"
-
+           Takes a dict with a period key for clarity and date(s), return a tuple (date, task, total_time, ratio)
+        '''
+        where_clause = self._calculate_task_ratio_where_clause(params)
         query = f"""
                 WITH q as (
                     SELECT date,
@@ -301,7 +292,21 @@ class SqliteStatRepository():
                     GROUP BY task_name
                     ORDER BY ratio DESC;
                 """
-        return self.connexion.execute(query).fetchall()
+        return self.connexion.execute(query, params).fetchall()
+    
+    def _calculate_task_ratio_where_clause(self, params):
+        where_clause = ''
+        if params["period"] == "day":
+            where_clause = "WHERE date = (:date)"
+        elif params["period"] == "week":
+            where_clause = "WHERE date > (:date)"
+        elif params["period"] == "month":
+            where_clause = "WHERE strftime('%Y-%m', date) = (:date)"
+        elif params["period"] == "custom":
+            where_clause = "where date >= (:rangeBeginning) AND date <= (:rangeEnding)"
+        else :
+            where_clause = "WHERE strftime('%Y', date) = strftime('%Y', (:date))"
+        return where_clause
     
     def get_task_time_per_week_in_month(self, month : str):
         '''
