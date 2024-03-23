@@ -6,7 +6,7 @@ from src.web_api.services.time_record_service import TimeRecordService
 
 time_records_blueprint = Blueprint("time_records", __name__)
 
-@time_records_blueprint.route("/time_records/<guid>", methods=["GET"])
+@time_records_blueprint.get("/time_records/<guid>")
 def get(guid : str):
     service = TimeRecordService()
     try:
@@ -14,13 +14,11 @@ def get(guid : str):
     except Exception as e:
         return {"code" : 400, "message" : str(e)}
 
-@time_records_blueprint.route("/time_records", methods=["GET"])
+@time_records_blueprint.get("/time_records")
 def get_time_records_by():
-    # Converts params from Flask ImmutableMultiDict to a simple dict.
-    params = request.args.to_dict()
     try:
         service = TimeRecordService()
-        time_records = service.get_by(params)
+        time_records = service.get_by(request.args)
         return time_records, 200
     except Exception as e:
         return str(e), 400
@@ -47,8 +45,7 @@ def update_time_record():
     data = req["data"]
     service = TimeRecordService()
     try:
-        time_record = service.update(operation_type, data)
-        return time_record
+        return service.update(operation_type, data)
     except Exception as e:
         return str(e), 400
 

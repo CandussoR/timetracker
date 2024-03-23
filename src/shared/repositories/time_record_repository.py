@@ -34,8 +34,9 @@ class SqliteTimeRecordRepository():
         try:
             if "date" in keys:
                 parameters.append("date = (:date)")
+            if set(["weekStart", "weekEnd"]).issubset(keys):
+                parameters.append(f"date BETWEEN (:weekStart) AND (:weekEnd)")
             if set(["rangeBeginning", "rangeEnd"]).issubset(keys):
-            # if conditions["rangeBeginning"] and conditions["rangeEnd"]:
                 parameters.append("date BETWEEN (:rangeBeginning) AND (:rangeEnd)")
             if "year" in keys :
                 year = conditions["year"]
@@ -45,12 +46,12 @@ class SqliteTimeRecordRepository():
                 month = conditions["month"]
                 like = f"'{month}%'"
                 parameters.append(f"date LIKE {like}")
-            # if conditions["task"] and not conditions["subtask"]:
+
             if "task" in keys and not "subtask" in keys:
                 parameters.append("tasks.task_name = (:task)")
-            if set(["task", "subtask"]).issubset(keys):
-            # elif conditions["task"] and conditions["subtask"]:
+            elif set(["task", "subtask"]).issubset(keys):
                 parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
+                
             if "tag" in keys:
                 parameters.append("tags.tag = (:tag)")
         except Exception as e:
