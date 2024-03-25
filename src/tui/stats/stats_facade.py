@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlite3 import Connection
 from typing import Literal
 
@@ -10,7 +11,7 @@ def display_stats(connexion : Connection):
     # gives an average time per day and a maximum.
     display_timer_count_and_time(repo, "today")
     
-    for _, task, time, ratio in repo.get_task_time_ratio({"period": "day"}):
+    for _, task, time, ratio in repo.get_task_time_ratio({"period": "day", "date" : datetime.today().strftime('%Y-%m-%d')}):
         if time is not None:
             task_streak = repo.max_and_current_streaks(task)
             max = "(max streak!)" if task_streak[0][1] == task_streak[0][0] else f"(max : {task_streak[0][0]})"
