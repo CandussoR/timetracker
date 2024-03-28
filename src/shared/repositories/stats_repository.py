@@ -309,12 +309,12 @@ class SqliteStatRepository():
             where_clause = "WHERE strftime('%Y', date) = (:date)"
         return where_clause
     
-    def get_task_time_per_day_in_week(self, week : str):
+    def get_task_time_per_day_between(self, start : str, end : str):
         '''
             Param : week -> number of the week.
             Returns (date, task_name, time_per_task, time_per_day, ratio).
         '''
-        query = f'''WITH tpd AS (
+        query = '''WITH tpd AS (
                         SELECT date, 
                             task_name, 
                             SUM(time_elapsed) OVER (PARTITION BY date, task_name) as time_per_task, 
@@ -322,7 +322,7 @@ class SqliteStatRepository():
                             ROW_NUMBER() OVER (PARTITION BY date, task_name) as row_num 
                         FROM timer_data 
                         JOIN tasks ON tasks.id = timer_data.task_id 
-                        WHERE strftime('%W', date) = '{week}') 
+                        WHERE date BETWEEN date(?) AND date(?)) 
                     SELECT date, 
                         task_name, 
                         time_per_day, 
@@ -331,7 +331,7 @@ class SqliteStatRepository():
                     FROM tpd 
                     WHERE row_num = 1 
                     ORDER BY date;'''
-        return self.connexion.execute(query).fetchall()
+        return self.connexion.execute(query, [start,end]).fetchall()
     
     def get_task_time_per_week_in_month(self, month : str):
         '''
