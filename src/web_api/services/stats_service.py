@@ -1,5 +1,5 @@
 from sqlite3 import Connection
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 from flask import g
 from src.shared.repositories.stats_repository import SqliteStatRepository
 from src.shared.utils.format_time import format_time
@@ -61,29 +61,27 @@ class StatService():
         except Exception as e:
             raise Exception(e) from e
     
-    def get_task_time_ratio(self, params : dict):
-        '''
-           params can be `{"period" : year|month|week|day, "date" : string, list[str], None}`
-           or at least one param.
-           Returns the total time and ratio for a task during a certain period.
-        '''
-        date = params.get("date")
 
-        if date is None :
+    def get_task_time_ratio(self, params : dict):
+        # Sent from the front only, only period without date in stats/resume
+        period = params.get("period")
+        if period:
+            del params["period"]
             today = datetime.today()
-            match(params["period"]):
+            match(period):
                 case "day":
-                    params["date"] = today.strftime('%Y-%m-%d')
+                    params["day"] = today.strftime('%Y-%m-%d')
                 case "week":
                     start_of_week = today - timedelta(days=today.weekday())
-                    params["date"] = start_of_week.strftime('%Y-%m-%d')
+                    end_of_week = start_of_week + timedelta(days=6)
+                    params["weekStart"] = start_of_week.strftime('%Y-%m-%d')
+                    params["weekEnd"] = end_of_week.strftime('%Y-%m-%d')
                 case "month":
-                    params["date"] = today.strftime('%Y-%m')
+                    params["month"] = today.strftime('%Y-%m')
                 case "year":
-                    params["date"] = str(today.year)
-        elif isinstance(date, list):
-            params["rangeBeginning"], params["rangeEndinging"] = date
-            del params["date"]
+                    params["year"] = str(today.year)
+                case "custom":
+                    params["rangeBeginning"], params["rangeEndinging"] = params["custom"]
 
         res = self.repo.get_task_time_ratio(params)
         if res == None:
@@ -106,30 +104,33 @@ class StatService():
         # assuming Monday is the start of the week
         today = None
         start_of_week = None
+        end_of_week = None
+
         if not week_dates :
             today = datetime.today()
             start_of_week = today - timedelta(days=today.weekday())
-            end_of_week = start_of_week + timedelta(days=7)
+            end_of_week = start_of_week + timedelta(days=6)
         else :
-            start_of_week = datetime.strptime(week_dates, '%Y-%m-%d')
+            first_day = datetime.strptime(week_dates, '%Y-%m-%d')
+            start_of_week = first_day - timedelta(days=first_day.weekday())
+            end_of_week = start_of_week + timedelta(days=6)
+            
+        days_in_week = [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])]
+        time_per_day = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
+        len_fill = 7 - len(time_per_day)
 
         # 1.2. Get task_time_ratio for every day of the week.     
         ratios = self.repo.get_task_time_per_day_between(start_of_week, end_of_week)
-        stacked = self.create_apex_bar_chart_object(ratios)
+        stacked = self.create_apex_bar_chart_object(ratios, days_in_week, len_fill)
 
         # 2. Total time per day of the week
-        days_in_week = [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])]
-        days_line_chart = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
-        days_line_chart = {"name" : "Total time", "data" : [time for _,time in days_line_chart]}
-        len_fill = 7 - len(days_line_chart["data"])
-        if len_fill:
-            days_line_chart["data"].extend([None] * len_fill)
+        days_line_chart = self.create_apex_line_chart_object(time_per_day, len_fill)
 
         return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
     
 
     def get_generic_month(self, month : str | None = None):
-        # 1.2. Get task_time_ratio for every day of the week.
+        # Get task_time_ratio for every day of the week.
         month = month
         if not month :
             now = datetime.now()
@@ -137,20 +138,22 @@ class StatService():
             number_of_weeks = len(calendar.monthcalendar(now.year, now.month))
         else :
            y, m = map(lambda x : int(x), month.split("-"))
-           number_of_weeks = len(calendar.monthcalendar(y, m)) 
+           number_of_weeks = len(calendar.monthcalendar(y, m))
 
         ratios = self.repo.get_task_time_per_week_in_month(month)
-        stacked = self.create_apex_bar_chart_object(ratios)
 
-        # # 2. Total time per week of the month
+        # Calculate fill to scale graphs
         weeks = sorted(list({w for w,_,_,_,_ in ratios}))
-        weeks_line_chart = self.repo.total_time_per_week_in_range(weeks[0], weeks[-1])
-        weeks_line_chart = {"name" : "Total time", "data" : [time for _,time in weeks_line_chart]}
-        len_fill = number_of_weeks - len(weeks_line_chart["data"])
-        if len_fill:
-            weeks_line_chart["data"].extend([None] * len_fill)
+        week_times = self.repo.total_time_per_week_in_range(weeks[0], weeks[-1])
+        len_fill = number_of_weeks - len(week_times)
 
-        return {"weeks" : weeks, "stackedBarChart" : stacked, "weeksLineChart": weeks_line_chart }
+        # Graph stacked column chart
+        stacked = self.create_apex_bar_chart_object(ratios, weeks, len_fill)
+
+        # Total time per week of the month
+        week_line_chart = self.create_apex_line_chart_object(week_times, len_fill)
+
+        return {"weeks" : weeks, "stackedBarChart" : stacked, "weeksLineChart": week_line_chart }
 
 
     def get_generic_year(self, year : str | None = None):
@@ -161,23 +164,22 @@ class StatService():
             year = now.strftime('%Y')
 
         ratios = (self.repo.get_task_time_per_month_in_year(year))
-        stacked = self.create_apex_bar_chart_object(ratios)
+        
+        months = sorted(list({m for m,_,_,_,_ in ratios}))  
+        time_per_month = self.repo.total_time_per_month_in_range(months[0], months[-1])
+        len_fill = 12 - len(time_per_month)
+        
+        stacked = self.create_apex_bar_chart_object(ratios, months, len_fill)
 
         # # 2. Total time per month of year
-        months = sorted(list({m for m,_,_,_,_ in ratios}))  
-        months_line_chart = self.repo.total_time_per_month_in_range(months[0], months[-1])
-        months_line_chart = {"name" : "Total time", "data" : [time for _,time in months_line_chart]}
-        len_fill = 12 - len(months_line_chart["data"])
-        if len_fill:
-            months_line_chart["data"].extend([None] * len_fill)
+        line = self.create_apex_line_chart_object(time_per_month, len_fill)
 
         return {"months" : months, 
                 "stackedBarChart" : stacked, 
-                "monthsLineChart": months_line_chart, 
+                "monthsLineChart": line, 
                 "weekLineChart": self.get_week_total_time({"years[]" : year})}
     
 
-    # Should this be a builder ?
     def get_custom_stats(self, params : ImmutableMultiDict):
         '''
             possible keys in the params dict :
@@ -200,20 +202,22 @@ class StatService():
 
         # If normal period, just call the generic function for that period, with specific date :
         keys = conditions.keys()
-        if "subtask" in keys and not "task" in keys:
-            return ValueError("Missing a task.")
-        
-        if ("task" in keys) or ("tag" in keys):
-            # Trouver le temps total pour la tâche
-            # Peut-être trouver le temps total consacré à la sous-tâche par rapport au temps total consacrée à la tâche.
-            if "tag" in keys or not "subtask" in keys:
-                response_object["stats"] = self.repo.get_subtask_time(conditions)
-            elif "subtask" in keys:
-                response_object["stats"] = "we should just get the task and maybe how much of the time overall it counts for"
-                print("task and subtask but not tags indeed")
 
-        elif (set(["day", "weekStart", "weekEnd" "month", "year"]).issubset(keys)
-            and not set(["task", "subtask", "tag"]).issubset(keys)):
+        if "stats" in keys:
+            for i, item in enumerate(conditions["stats"]):
+                match(item["element"]):
+                    case('line-chart'):
+                        response_object["stats"][i]= self.create_apex_line_chart_object()
+                    case('stacked-column-chart'):
+                        ratios = self.get_task_time_ratio(params)
+                        response_object["stats"][i]= self.create_apex_bar_chart_object()
+                    case('task-ratio'):
+                        response_object["stats"][i]= self.get_task_time_ratio(conditions)
+                    case('subtask-ratio'):
+                        response_object["stats"][i] = self.repo.get_subtask_time_ratio(conditions)
+                    case('_'):
+                        raise ValueError("Wrong value for stat element.")
+        else:
             if "day" in keys:
                 print("do sth")
             elif "weekStart" in keys or "weekEnd" in keys:
@@ -226,18 +230,18 @@ class StatService():
                 if not "rangeEnding" in keys:
                     conditions["rangeEnding"] = datetime.today().strftime(time_format)
 
-                days_in_range = datetime.strptime(conditions["rangeEnding"], time_format) - datetime.strptime(conditions["rangeBeginning"], time_format)
-                days_in_range = int(days_in_range.total_seconds() / 86400)
-                if days_in_range > 1 and days_in_range < 7:
-                    print("get a week-like stats bro")
-                    # Get task_time_ratio
-                    # Get chart for multiple days
-                    # Get bar line for times per day, I guess.
-                elif days_in_range > 7 and days_in_range <= 31:
-                    print("get a monthlike thing")
-                else:
-                    print("get a year-like graph maybe ? dunno")
-                response_object["stats"] = "yeah it's custom but it's not out yet"   
+                    days_in_range = datetime.strptime(conditions["rangeEnding"], time_format) - datetime.strptime(conditions["rangeBeginning"], time_format)
+                    days_in_range = int(days_in_range.total_seconds() / 86400)
+                    if days_in_range > 1 and days_in_range < 7:
+                        print("get a week-like stats bro")
+                        # Get task_time_ratio
+                        # Get chart for multiple days
+                        # Get bar line for times per day, I guess.
+                    elif days_in_range > 7 and days_in_range <= 31:
+                        print("get a monthlike thing")
+                    else:
+                        print("get a year-like graph maybe ? dunno")
+                    response_object["stats"] = "yeah it's custom but it's not out yet"   
 
         if "logs" in keys:
             time_record_service = TimeRecordService()
@@ -245,20 +249,25 @@ class StatService():
         
         return response_object
     
-    def create_apex_bar_chart_object(self, ratios : list):
+    def create_apex_bar_chart_object(self, ratios : list, time_unit_array : list, fill : int):
         '''
             Format data object for apexcharts StackedBar in front.
         '''
-        time_unit = sorted(list({t_u for t_u,_,_,_,_ in ratios})) 
         # Makes a list of the set of tasks so we can get an index
         tasks = list({t for _,t,_,_,_ in ratios})
         # Creating an object with values prefilled for each day of the week
-        stacked = [{"name" : t, "data" : [0] * len(time_unit)} for t in tasks]
+        stacked = [{"name" : t, "data" : [0] * ( len(time_unit_array) + fill )} for t in tasks]
         
         for date, task, _, _, ratio in ratios:
-            stacked[tasks.index(task)]["data"][time_unit.index(date)] = ratio
+            stacked[tasks.index(task)]["data"][time_unit_array.index(date)] = ratio
 
         return stacked
     
-    def create_apex_line_chart_object(self):
-        pass
+
+    def create_apex_line_chart_object(self, times : list[str], fill : int):
+        '''
+            Format data object for apexcharts LineBar in front.
+        '''
+        line = {"name" : "Total time", "data" : [time for _,time in times]}
+        line["data"].extend([None] * fill)
+        return line
