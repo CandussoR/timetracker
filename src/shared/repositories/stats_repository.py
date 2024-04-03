@@ -1,4 +1,5 @@
 from sqlite3 import connect
+import sqlite3
 from typing import Literal, Optional, Tuple, Union
 from sqlite3.dbapi2 import Connection
 from datetime import datetime, timedelta
@@ -34,7 +35,6 @@ class SqliteStatRepository():
                     number = self.connexion.execute(week_count).fetchone()
                 elif time_span == 'month':
                     month_count = "SELECT COUNT(*) FROM timer_data WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')"
-                    print("month count")
                     number = self.connexion.execute(month_count).fetchone()
                 elif time_span == 'year':
                     year_count = "SELECT COUNT(*) FROM timer_data WHERE date(strftime('%Y', date)) = date(strftime('%Y', 'now'))"
@@ -43,7 +43,6 @@ class SqliteStatRepository():
                 return number[0]
 
             except Exception as e:
-                print("exception in timer count")
                 raise Exception(e) from e
 
     def total_time(self, time_span : str) -> str :
@@ -268,13 +267,15 @@ class SqliteStatRepository():
                 """
         return self.connexion.execute(query).fetchall()
 
+
     def get_task_time_ratio(self, params) -> list[tuple]:
         '''
            Count time on task during a certain period of time,
            or time on subtasks of a certain task.
            Takes a dict with a period key for clarity and date(s) as strings, return a tuple (date, task, total_time, ratio)
         '''
-        where_clause = self._calculate_task_ratio_where_clause(params)
+            # where_clause = self._calculate_task_ratio_where_clause(params)
+        where_clause = self.build_where_clause_from_dict(params)
         query = f"""
                 WITH q as (
                     SELECT date,
@@ -282,7 +283,7 @@ class SqliteStatRepository():
                         SUM(time_elapsed) as total_time
                     FROM timer_data
                     JOIN tasks t on t.id = timer_data.task_id
-                    {where_clause}
+                    WHERE {' AND '.join(where_clause)}
                     GROUP BY task_name
                 )
                 SELECT date,
@@ -295,20 +296,7 @@ class SqliteStatRepository():
                 """
         return self.connexion.execute(query, params).fetchall()
     
-    def _calculate_task_ratio_where_clause(self, params):
-        where_clause = ''
-        if params["period"] == "day":
-            where_clause = "WHERE date = (:date)"
-        elif params["period"] == "week":
-            where_clause = "WHERE date > (:date)"
-        elif params["period"] == "month":
-            where_clause = "WHERE strftime('%Y-%m', date) = (:date)"
-        elif params["period"] == "custom":
-            where_clause = "where date >= (:rangeBeginning) AND date <= (:rangeEnding)"
-        else :
-            where_clause = "WHERE strftime('%Y', date) = (:date)"
-        return where_clause
-    
+
     def get_task_time_per_day_between(self, start : str, end : str):
         '''
             Param : week -> number of the week.
@@ -450,9 +438,9 @@ class SqliteStatRepository():
                 '''
         return self.connexion.execute(query).fetchall()
     
-    def get_subtask_time(self, params : dict) -> tuple:
+    def get_subtask_time_ratio(self, params : dict) -> tuple:
         keys = params.keys()
-        where_clause = SqliteQueryBuilder(params).where_clause
+        where_clause = self.build_where_clause_from_dict(params)
         if "date" in keys and not "tag" in keys:
             query = f'''WITH base AS (
                                     SELECT date, 
@@ -463,7 +451,7 @@ class SqliteStatRepository():
                                         SUM(time_elapsed) OVER (PARTITION BY t.task_name, t.subtask) AS time_for_subtask 
                                     FROM timer_data 
                                     JOIN tasks t ON t.id = timer_data.task_id 
-                                    {where_clause}
+                                    WHERE {where_clause}
                                 ) 
                                 SELECT task_name, subtask, time_elapsed, ROUND((time_for_subtask/time_for_task)*100, 1) as ratio 
                                 FROM base;'''
@@ -569,3 +557,34 @@ class SqliteStatRepository():
                 return self.connexion.execute(query).fetchone()[0]
             case "year":
                 raise NotImplementedError('Not implemented yet.')
+    
+    def build_where_clause_from_dict(self, params : dict):
+        '''Takes a dict a build the where clause of a SQlite query.
+        Dict might expect the following keys :
+            day, week, month, year, weekStart, weekEnd, rangeBeginning, rangeEnd, task, subtask, logSearch.
+        '''
+        parameters = []
+        keys = params.keys()
+        if "day" in keys:
+            parameters.append("date = (:day)")
+        elif set(["weekStart", "weekEnd"]).issubset(keys):
+            parameters.append(f"date BETWEEN (:weekStart) AND (:weekEnd)")
+        elif "month" in keys:
+            parameters.append(f"strftime('%Y-%m', date) = (:month)")
+        elif "year" in keys :
+            parameters.append(f"strftime('%Y', date) = (:year)")
+        elif set(["rangeBeginning", "rangeEnd"]).issubset(keys):
+            parameters.append("date BETWEEN (:rangeBeginning) AND (:rangeEnding)")
+
+        if "task" in keys and not "subtask" in keys:
+            parameters.append("tasks.task_name = (:task)")
+        elif set(["task", "subtask"]).issubset(keys):
+            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
+
+        if "tag" in keys:
+            parameters.append("tags.tag = (:tag)")
+
+        if "logSearch" in keys:
+            parameters.append("log LIKE '(:logSearch)%'")
+        
+        return parameters
