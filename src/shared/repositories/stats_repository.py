@@ -201,6 +201,7 @@ class SqliteStatRepository():
         '''
             # where_clause = self._calculate_task_ratio_where_clause(params)
         where_clause = self.build_where_clause_from_dict(params)
+
         query = f"""
                 WITH q as (
                     SELECT date,

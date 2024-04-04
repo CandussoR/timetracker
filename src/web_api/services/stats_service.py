@@ -65,9 +65,12 @@ class StatService():
     
 
     def get_task_time_ratio(self, params : dict):
+        '''
+            There's a little quirk here : if a week already set is to be passed, the dict must be of type `{"weekStart" : dt, "weekEnd" : dt}`.
+            Otherwise, we take a specified period and do our little thing, and week is transformed in said way.
+        '''
         # Sent from the front only, only period without date in stats/resume
-        period = params.get("period")
-        if period:
+        if period := params.get("period"):
             del params["period"]
             today = datetime.today()
             match(period):
@@ -154,12 +157,10 @@ class StatService():
 
     def get_generic_year(self, year : datetime | None = None):
         # 1.2. Get task_time_ratio for every month of year.
-        year = year
         if year is None:
-            year = datetime.strptime(str(datetime.now().year), '%Y')
+            year = datetime.now()
 
-        ratios = (self.repo.get_task_time_per_month_in_year(year))
-        
+        ratios = self.repo.get_task_time_per_month_in_year(year)
         months = self.get_column_dates_for("year", year)
         time_per_month = self.repo.total_time_per_month_in_range(months[0], months[-1])
         len_fill = 12 - len(time_per_month)
@@ -275,28 +276,19 @@ class StatService():
         '''
             Returns an array of dates or ints destined to be placeholders for graphs x abscissa.
         '''
-        now = datetime.now()
+        if date is None:
+            date = datetime.now()
 
         match (period):
-
             case "year":
-                year = date.year or now.year
-                return [f"{year}-{month:02d}" for month in range(1, now.month+1)]
+                return [f"{date.year}-{month:02d}" for month in range(1, datetime.now().month+1)]
             
             case "month":
-                if date is None :
-                    _, first_week_of_month, _ = datetime.strptime(f'{now.year}-{now.month}-01', '%Y-%m-%d').isocalendar()
-                    _,last_day = calendar.monthrange(now.year, now.month)
-                    _, last_week, _ = datetime(now.year, now.month, last_day).isocalendar()
-                else :
-                    _, first_week_of_month, _ = date.isocalendar()
-                    _,last_day = calendar.monthrange(date.year, date.month)
-                    _, last_week, _ = datetime(date.year, date.month, last_day).isocalendar()
+                _, first_week_of_month, _ = date.isocalendar()
+                _,last_day = calendar.monthrange(date.year, date.month)
+                _, last_week, _ = datetime(date.year, date.month, last_day).isocalendar()
                 return [f'{week:02d}' for week in range(first_week_of_month, last_week+1)]
             
             case "week":
-                if date is None :
-                    start_of_week = now - timedelta(days=now.weekday())
-                else :
-                    start_of_week = date - timedelta(days=date.weekday())
+                start_of_week = date - timedelta(days=date.weekday())
                 return [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])]
