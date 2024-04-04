@@ -141,7 +141,7 @@ class StatService():
            number_of_weeks = len(calendar.monthcalendar(y, m))
 
         ratios = self.repo.get_task_time_per_week_in_month(month)
-
+        print(ratios)
         # Calculate fill to scale graphs
         weeks = sorted(list({w for w,_,_,_,_ in ratios}))
         week_times = self.repo.total_time_per_week_in_range(weeks[0], weeks[-1])
@@ -165,7 +165,7 @@ class StatService():
 
         ratios = (self.repo.get_task_time_per_month_in_year(year))
         
-        months = sorted(list({m for m,_,_,_,_ in ratios}))  
+        months = self.get_column_dates("year")
         time_per_month = self.repo.total_time_per_month_in_range(months[0], months[-1])
         len_fill = 12 - len(time_per_month)
         
@@ -205,9 +205,12 @@ class StatService():
 
         if "stats" in keys:
             for i, item in enumerate(conditions["stats"]):
+                time_units = []
+                ratios = []
+                fill = []
                 match(item["element"]):
                     case('line-chart'):
-                        response_object["stats"][i]= self.create_apex_line_chart_object()
+                        response_object["stats"][i] = self.create_apex_line_chart_object()
                     case('stacked-column-chart'):
                         ratios = self.get_task_time_ratio(params)
                         response_object["stats"][i]= self.create_apex_bar_chart_object()
@@ -271,3 +274,17 @@ class StatService():
         line = {"name" : "Total time", "data" : [time for _,time in times]}
         line["data"].extend([None] * fill)
         return line
+    
+
+    def get_column_dates(self, period : str|int ) -> list:
+        match (period):
+            case "year":
+                now = datetime.now()
+                year = now.strftime('%Y')
+                months = [f"{year}-{month:02d}" for month in range(1, now.month+1)]
+                return months
+            case "month":
+                now = datetime.now()
+                month = now.strftime('%Y-%m')
+                number_of_weeks = len(calendar.monthcalendar(now.year, now.month))
+                return 
