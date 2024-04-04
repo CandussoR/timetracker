@@ -48,16 +48,18 @@ class StatService():
             raise Exception(e) from e
     
 
-    def get_week_total_time(self, params : dict):
+    def get_week_total_time_per_week_for_years(self, years : list[str]):
+        '''
+            Used to fill a year of week times in a bar chart in the front.
+        '''
         try:
-            if "years[]" in params.keys():
-                res = self.repo.total_time_per_week([params["years[]"]])
-                years = {year for (year, _, _, _, _) in res}
-                obj = {}
-                for y in years :
-                    # Too much coupling with apexcharts
-                    obj[y] = [{"x": week, "y": time} for (year, week, _, _, time) in res if year == y]
-                return obj
+            res = self.repo.total_time_per_week_for_years(years)
+            years = {year for (year, _, _, _, _) in res}
+            obj = {}
+            for y in years :
+                # Too much coupling with apexcharts
+                obj[y] = [{"x": week, "y": time} for (year, week, _, _, time) in res if year == y]
+            return obj
         except Exception as e:
             raise Exception(e) from e
     
@@ -115,7 +117,6 @@ class StatService():
             start_of_week = first_day - timedelta(days=first_day.weekday())
             end_of_week = start_of_week + timedelta(days=6)
             
-        # days_in_week = [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])]
         days_in_week = self.get_column_dates_for("week", start_of_week)
         time_per_day = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
         len_fill = 7 - len(time_per_day)
@@ -130,21 +131,19 @@ class StatService():
         return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
     
 
-    def get_generic_month(self, month : str | None = None):
+    def get_generic_month(self, month : datetime | None = None):
         # Get task_time_ratio for every day of the week.
         month = month
 
         if not month :
-            now = datetime.now()
-            month = now.strftime('%Y-%m')
+            month = datetime.now().replace(day=1)
 
         weeks = self.get_column_dates_for("month", month)
-        week_times = self.repo.total_time_per_week_in_range(weeks[0], weeks[-1])
+        week_times = self.repo.total_time_per_week_in_range(str(month.year), weeks[0], weeks[-1])
         len_fill = len(weeks) - len(week_times)
 
         # Graph stacked column chart
         ratios = self.repo.get_task_time_per_week_in_month(month)
-
         stacked = self.create_apex_bar_chart_object(ratios, weeks, len_fill)
 
         # Total time per week of the month
@@ -153,12 +152,11 @@ class StatService():
         return {"weeks" : weeks, "stackedBarChart" : stacked, "weeksLineChart": week_line_chart }
 
 
-    def get_generic_year(self, year : str | None = None):
+    def get_generic_year(self, year : datetime | None = None):
         # 1.2. Get task_time_ratio for every month of year.
         year = year
         if year is None:
-            now = datetime.now()
-            year = now.strftime('%Y')
+            year = datetime.strptime(str(datetime.now().year), '%Y')
 
         ratios = (self.repo.get_task_time_per_month_in_year(year))
         
@@ -174,7 +172,7 @@ class StatService():
         return {"months" : months, 
                 "stackedBarChart" : stacked, 
                 "monthsLineChart": line, 
-                "weekLineChart": self.get_week_total_time({"years[]" : year})}
+                "weekLineChart": self.get_week_total_time_per_week_for_years([str(year.year)])}
     
 
     def get_custom_stats(self, params : ImmutableMultiDict):
