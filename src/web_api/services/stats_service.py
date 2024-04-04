@@ -99,23 +99,24 @@ class StatService():
         return data
     
     
-    def get_generic_week(self, week_dates : str | None = None):
+    def get_generic_week(self, week_beginning_date : str | None = None):
         # 1.1 Get all the dates for the current week
         # assuming Monday is the start of the week
         today = None
-        start_of_week = None
+        start_of_week = week_beginning_date
         end_of_week = None
 
-        if not week_dates :
+        if not start_of_week :
             today = datetime.today()
             start_of_week = today - timedelta(days=today.weekday())
             end_of_week = start_of_week + timedelta(days=6)
         else :
-            first_day = datetime.strptime(week_dates, '%Y-%m-%d')
+            first_day = datetime.strptime(week_beginning_date, '%Y-%m-%d')
             start_of_week = first_day - timedelta(days=first_day.weekday())
             end_of_week = start_of_week + timedelta(days=6)
             
-        days_in_week = [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])]
+        # days_in_week = [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])]
+        days_in_week = self.get_column_dates_for("week", start_of_week)
         time_per_day = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
         len_fill = 7 - len(time_per_day)
 
@@ -132,22 +133,18 @@ class StatService():
     def get_generic_month(self, month : str | None = None):
         # Get task_time_ratio for every day of the week.
         month = month
+
         if not month :
             now = datetime.now()
             month = now.strftime('%Y-%m')
-            number_of_weeks = len(calendar.monthcalendar(now.year, now.month))
-        else :
-           y, m = map(lambda x : int(x), month.split("-"))
-           number_of_weeks = len(calendar.monthcalendar(y, m))
 
-        ratios = self.repo.get_task_time_per_week_in_month(month)
-        print(ratios)
-        # Calculate fill to scale graphs
-        weeks = sorted(list({w for w,_,_,_,_ in ratios}))
+        weeks = self.get_column_dates_for("month", month)
         week_times = self.repo.total_time_per_week_in_range(weeks[0], weeks[-1])
-        len_fill = number_of_weeks - len(week_times)
+        len_fill = len(weeks) - len(week_times)
 
         # Graph stacked column chart
+        ratios = self.repo.get_task_time_per_week_in_month(month)
+
         stacked = self.create_apex_bar_chart_object(ratios, weeks, len_fill)
 
         # Total time per week of the month
@@ -165,7 +162,7 @@ class StatService():
 
         ratios = (self.repo.get_task_time_per_month_in_year(year))
         
-        months = self.get_column_dates("year")
+        months = self.get_column_dates_for("year", year)
         time_per_month = self.repo.total_time_per_month_in_range(months[0], months[-1])
         len_fill = 12 - len(time_per_month)
         
@@ -276,15 +273,32 @@ class StatService():
         return line
     
 
-    def get_column_dates(self, period : str|int ) -> list:
+    def get_column_dates_for(self, period : str|int, date : datetime = None ) -> list:
+        '''
+            Returns an array of dates or ints destined to be placeholders for graphs x abscissa.
+        '''
+        now = datetime.now()
+
         match (period):
+
             case "year":
-                now = datetime.now()
-                year = now.strftime('%Y')
-                months = [f"{year}-{month:02d}" for month in range(1, now.month+1)]
-                return months
+                year = date.year or now.year
+                return [f"{year}-{month:02d}" for month in range(1, now.month+1)]
+            
             case "month":
-                now = datetime.now()
-                month = now.strftime('%Y-%m')
-                number_of_weeks = len(calendar.monthcalendar(now.year, now.month))
-                return 
+                if date is None :
+                    _, first_week_of_month, _ = datetime.strptime(f'{now.year}-{now.month}-01', '%Y-%m-%d').isocalendar()
+                    _,last_day = calendar.monthrange(now.year, now.month)
+                    _, last_week, _ = datetime(now.year, now.month, last_day).isocalendar()
+                else :
+                    _, first_week_of_month, _ = date.isocalendar()
+                    _,last_day = calendar.monthrange(date.year, date.month)
+                    _, last_week, _ = datetime(date.year, date.month, last_day).isocalendar()
+                return [f'{week:02d}' for week in range(first_week_of_month, last_week+1)]
+            
+            case "week":
+                if date is None :
+                    start_of_week = now - timedelta(days=now.weekday())
+                else :
+                    start_of_week = date - timedelta(days=date.weekday())
+                return [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])]
