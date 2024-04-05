@@ -13,13 +13,10 @@ from src.web_api.services.time_record_service import TimeRecordService
 
 class StatService():
     def __init__(self, connexion : Connection | None = None, request : ImmutableMultiDict | None = None):
-        # Given
         self.connexion = g._database if connexion == None else connexion
-        print(request)
-        self.request = convert_to_custom_dict(request)
-        # Created
         self.repo = SqliteStatRepository(self.connexion)
-        self.period_stat = self.create_stat_object(request)
+        self.request = convert_to_custom_dict(request) if request else None
+        self.period_stat = self.create_stat_object(request) if self.request else None
     
 
     def create_stat_object(self, request_dict : dict):
@@ -40,35 +37,15 @@ class StatService():
 
 
     def get_home_stats(self):
-        try: 
-            mean_week = self.repo.mean_time_per_period("week")
-            formatted_mean_week = format_time(mean_week, "day") if mean_week > 86400 else format_time(mean_week, "hour")
-            mean_month = self.repo.mean_time_per_period("month")
-            formatted_mean_month = format_time(mean_month, "day") if mean_month > 86400 else format_time(mean_month, "hour")
-            home = {
-                "daily" : {
-                    "count": self.repo.timer_count("today"),
-                    "time" : format_time(self.repo.total_time("today") or 0, "hour").split(":"),
-                    "mean" : format_time(self.repo.mean_time_per_period("day"), "hour").split(":")
-                }, 
-                "weekly" : {
-                    "count": self.repo.timer_count("week"),
-                    "time" : format_time(self.repo.total_time("week") or 0, "hour").split(":"),
-                    "mean": formatted_mean_week.split(":")
-                },
-                "monthly" : {
-                    "count": self.repo.timer_count("month"),
-                    "time" : format_time(self.repo.total_time("month") or 0, "day").split(":"),
-                    "mean" : formatted_mean_month.split(":")
-                },
-                "yearly" : {
-                    "count": self.repo.timer_count("year"),
-                    "time" : format_time(self.repo.total_time("year") or 0, "day").split(":")
-                }
-            }
-            return home
-        except Exception as e:
-            raise Exception(e) from e
+        '''
+            Getting home start for everywhere at once.
+        '''
+        return {
+            "daily" : DayStat().get_home_stat(self.repo), 
+            "weekly" : WeekStat().get_home_stat(self.repo),
+            "monthly" : MonthStat().get_home_stat(self.repo),
+            "yearly" : YearStat().get_home_stat(self.repo)
+        }
     
 
     def get_week_total_time_per_week_for_years(self, years : list[str]):
@@ -307,8 +284,12 @@ class StatService():
 
 class DayStat():
 
-    def get_home_stat(self):
-        pass
+    def get_home_stat(self, repo : SqliteStatRepository):
+        return  {
+                "count": repo.timer_count("today"),
+                "time" : format_time(repo.total_time("today") or 0, "hour").split(":"),
+                "mean" : format_time(repo.mean_time_per_period("day"), "hour").split(":")
+                }
 
     def get_generic_stat(self) :
         pass
@@ -316,8 +297,14 @@ class DayStat():
 
 class WeekStat():
 
-    def get_home_stat(self):
-        pass
+    def get_home_stat(self, repo : SqliteStatRepository):
+        mean_week = repo.mean_time_per_period("week")
+        formatted_mean_week = format_time(mean_week, "day") if mean_week > 86400 else format_time(mean_week, "hour")
+        return {
+                    "count": repo.timer_count("week"),
+                    "time" : format_time(repo.total_time("week") or 0, "hour").split(":"),
+                    "mean": formatted_mean_week.split(":")
+                }
 
     def get_generic_stat(self) :
         pass
@@ -328,12 +315,19 @@ class WeekStat():
 
     
 class MonthStat():
-
-    def get_home_stat(self):
-        pass
+    def get_home_stat(self, repo : SqliteStatRepository):
+        mean_month = repo.mean_time_per_period("month")
+        formatted_mean_month = format_time(mean_month, "day") if mean_month > 86400 else format_time(mean_month, "hour")
+        return {
+                    "count": repo.timer_count("month"),
+                    "time" : format_time(repo.total_time("month") or 0, "day").split(":"),
+                    "mean" : formatted_mean_month.split(":")
+                }
+    
 
     def get_generic_stat(self) :
         pass 
+
 
     def get_column_date(self, date : datetime | None = None):
         _, first_week_of_month, _ = date.isocalendar()
@@ -342,9 +336,11 @@ class MonthStat():
         return [f'{week:02d}' for week in range(first_week_of_month, last_week+1)]
 
 class YearStat():
-
-    def get_home_stat(self):
-        pass
+    def get_home_stat(self, repo : SqliteStatRepository):
+        return {
+                    "count": repo.timer_count("year"),
+                    "time" : format_time(repo.total_time("year") or 0, "day").split(":")
+                }
 
     def get_generic_stat(self) :
         pass
