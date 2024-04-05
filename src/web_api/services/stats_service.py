@@ -2,6 +2,7 @@ from sqlite3 import Connection
 from typing import List, Literal, Optional
 from flask import g
 from src.shared.repositories.stats_repository import SqliteStatRepository
+from src.shared.utils.custom_dict_converter import convert_to_custom_dict
 from src.shared.utils.format_time import format_time
 from datetime import datetime, timedelta
 from werkzeug.datastructures import ImmutableMultiDict
@@ -11,12 +12,34 @@ from src.web_api.services.time_record_service import TimeRecordService
 
 
 class StatService():
-    def __init__(self, connexion : Connection | None = None):
+    def __init__(self, connexion : Connection | None = None, request : ImmutableMultiDict | None = None):
+        # Given
         self.connexion = g._database if connexion == None else connexion
+        print(request)
+        self.request = convert_to_custom_dict(request)
+        # Created
         self.repo = SqliteStatRepository(self.connexion)
+        self.period_stat = self.create_stat_object(request)
+    
+
+    def create_stat_object(self, request_dict : dict):
+        '''
+            Factory based on the dictionary transformed from the front request.
+        '''
+        haystack = request_dict.get("period")
+        if not haystack :
+            haystack = request_dict.keys()
+        if "day" in haystack:
+            return DayStat()
+        elif "week" in haystack or "weekStart" in haystack:
+            return WeekStat()
+        elif "month" in haystack:
+            return MonthStat()
+        elif "year" in haystack :
+            return YearStat()
+
 
     def get_home_stats(self):
-        #TODO : Make a decision regarding the way I'm sending time to the front. Array or str ?
         try: 
             mean_week = self.repo.mean_time_per_period("week")
             formatted_mean_week = format_time(mean_week, "day") if mean_week > 86400 else format_time(mean_week, "hour")
@@ -104,21 +127,16 @@ class StatService():
         return data
     
     
-    def get_generic_week(self, week_beginning_date : str | None = None):
+    def get_generic_week(self, week_beginning_date : str | datetime | None = None):
         # 1.1 Get all the dates for the current week
         # assuming Monday is the start of the week
-        today = None
-        start_of_week = week_beginning_date
-        end_of_week = None
+        if not week_beginning_date :
+            week_beginning_date = datetime.today()
+        if isinstance(week_beginning_date, str):
+            week_beginning_date = datetime.strptime(week_beginning_date, '%Y-%m-%d')
 
-        if not start_of_week :
-            today = datetime.today()
-            start_of_week = today - timedelta(days=today.weekday())
-            end_of_week = start_of_week + timedelta(days=6)
-        else :
-            first_day = datetime.strptime(week_beginning_date, '%Y-%m-%d')
-            start_of_week = first_day - timedelta(days=first_day.weekday())
-            end_of_week = start_of_week + timedelta(days=6)
+        start_of_week = week_beginning_date - timedelta(days=week_beginning_date.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
             
         days_in_week = self.get_column_dates_for("week", start_of_week)
         time_per_day = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
@@ -135,9 +153,15 @@ class StatService():
     
 
     def get_generic_month(self, month : datetime | None = None):
+        '''
+            Gets a datetime object "YYYY-MM-DD" and returns a dict with :
+            `weeks` : the week numbers of the month,
+            `stackedBarChart` : data formated for Apex Charts Stacked Bar Chart,
+            `weeksLineChart` : date formated for Apex Charts Line Chart.
+        '''
         # Get task_time_ratio for every day of the week.
-        month = month
-
+        if isinstance(month, str):
+            month = datetime.strptime(month, '%Y-%m')
         if not month :
             month = datetime.now().replace(day=1)
 
@@ -184,63 +208,50 @@ class StatService():
         response_object = {}
         time_format = '%Y-%m-%d'
 
-        # Converting ImmutableMultiDict to dict for the rest of the query
-        conditions = {}
-        for k in params :
-            if k == "week[]":
-                continue
-            else:
-                conditions[k] = params[k]
-        if "week[]" in params:
-            # keeping the camel case to go with rangeBeginning etc.
-            # we don't do bindings but fstrings for the stats repo, so...
-            [conditions["weekStart"], conditions["weekEnd"]] = params.getlist("week[]")
-
-        # If normal period, just call the generic function for that period, with specific date :
+        # # If normal period, just call the generic function for that period, with specific date :
+        conditions = convert_to_custom_dict(params)
         keys = conditions.keys()
 
         if "stats" in keys:
             for i, item in enumerate(conditions["stats"]):
-                time_units = []
-                ratios = []
-                fill = []
                 match(item["element"]):
                     case('line-chart'):
                         response_object["stats"][i] = self.create_apex_line_chart_object()
                     case('stacked-column-chart'):
                         ratios = self.get_task_time_ratio(params)
-                        response_object["stats"][i]= self.create_apex_bar_chart_object()
+                        time_unit_array = self.get_column_dates_for(item["period"])
+                        response_object["stats"][i]= self.create_apex_bar_chart_object(ratios, time_unit_array)
                     case('task-ratio'):
                         response_object["stats"][i]= self.get_task_time_ratio(conditions)
                     case('subtask-ratio'):
                         response_object["stats"][i] = self.repo.get_subtask_time_ratio(conditions)
                     case('_'):
                         raise ValueError("Wrong value for stat element.")
-        else:
-            if "day" in keys:
-                print("do sth")
-            elif "weekStart" in keys or "weekEnd" in keys:
-                response_object["stats"] = self.get_generic_week(conditions["weekStart"])
-            elif "month" in keys:
-                response_object["stats"] = self.get_generic_month(conditions["month"])
-            elif "year" in keys:
-                response_object["stats"] = self.get_generic_year(conditions["year"])
-            elif "rangeBeginning" in keys:
-                if not "rangeEnding" in keys:
-                    conditions["rangeEnding"] = datetime.today().strftime(time_format)
 
-                    days_in_range = datetime.strptime(conditions["rangeEnding"], time_format) - datetime.strptime(conditions["rangeBeginning"], time_format)
-                    days_in_range = int(days_in_range.total_seconds() / 86400)
-                    if days_in_range > 1 and days_in_range < 7:
-                        print("get a week-like stats bro")
-                        # Get task_time_ratio
-                        # Get chart for multiple days
-                        # Get bar line for times per day, I guess.
-                    elif days_in_range > 7 and days_in_range <= 31:
-                        print("get a monthlike thing")
-                    else:
-                        print("get a year-like graph maybe ? dunno")
-                    response_object["stats"] = "yeah it's custom but it's not out yet"   
+        if "day" in keys:
+            print("do sth")
+        elif "weekStart" in keys or "weekEnd" in keys:
+            response_object["generic"] = self.get_generic_week(conditions["weekStart"])
+        elif "month" in keys:
+            response_object["generic"] = self.get_generic_month(conditions["month"])
+        elif "year" in keys:
+            response_object["generic"] = self.get_generic_year(conditions["year"])
+        elif "rangeBeginning" in keys:
+            if not "rangeEnding" in keys:
+                conditions["rangeEnding"] = datetime.today().strftime(time_format)
+
+            days_in_range = datetime.strptime(conditions["rangeEnding"], time_format) - datetime.strptime(conditions["rangeBeginning"], time_format)
+            days_in_range = int(days_in_range.total_seconds() / 86400)
+            if days_in_range > 1 and days_in_range < 7:
+                print("get a week-like stats bro")
+                # Get task_time_ratio
+                # Get chart for multiple days
+                # Get bar line for times per day, I guess.
+            elif days_in_range > 7 and days_in_range <= 31:
+                print("get a monthlike thing")
+            else:
+                print("get a year-like graph maybe ? dunno")
+                response_object["stats"] = "yeah it's custom but it's not out yet"   
 
         if "logs" in keys:
             time_record_service = TimeRecordService()
@@ -289,6 +300,54 @@ class StatService():
                 _, last_week, _ = datetime(date.year, date.month, last_day).isocalendar()
                 return [f'{week:02d}' for week in range(first_week_of_month, last_week+1)]
             
-            case "week":
+            case ("week"):
                 start_of_week = date - timedelta(days=date.weekday())
                 return [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])]
+
+
+class DayStat():
+
+    def get_home_stat(self):
+        pass
+
+    def get_generic_stat(self) :
+        pass
+
+
+class WeekStat():
+
+    def get_home_stat(self):
+        pass
+
+    def get_generic_stat(self) :
+        pass
+
+    def get_column_date(self, date : datetime | None = None):
+        start_of_week = date - timedelta(days=date.weekday())
+        return [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])] 
+
+    
+class MonthStat():
+
+    def get_home_stat(self):
+        pass
+
+    def get_generic_stat(self) :
+        pass 
+
+    def get_column_date(self, date : datetime | None = None):
+        _, first_week_of_month, _ = date.isocalendar()
+        _,last_day = calendar.monthrange(date.year, date.month)
+        _, last_week, _ = datetime(date.year, date.month, last_day).isocalendar()
+        return [f'{week:02d}' for week in range(first_week_of_month, last_week+1)]
+
+class YearStat():
+
+    def get_home_stat(self):
+        pass
+
+    def get_generic_stat(self) :
+        pass
+
+    def get_column_date(self, date : datetime | None = None):
+        return [f"{date.year}-{month:02d}" for month in range(1, datetime.now().month+1)]
