@@ -16,13 +16,15 @@ class StatService():
         self.connexion = g._database if connexion == None else connexion
         self.repo = SqliteStatRepository(self.connexion)
         self.request = convert_to_custom_dict(request) if request else None
-        self.period_stat = self.create_stat_object(request) if self.request else None
+        self.period_stat = self.create_stat_object(self.request)
     
 
     def create_stat_object(self, request_dict : dict):
         '''
             Factory based on the dictionary transformed from the front request.
         '''
+        print(request_dict)
+        if request_dict is None: return None
         haystack = request_dict.get("period")
         if not haystack :
             haystack = request_dict.keys()
@@ -35,6 +37,9 @@ class StatService():
         elif "year" in haystack :
             return YearStat()
 
+    def ggs(self, date : datetime):
+        # prb with the request argument : should be modular depending on what object is created.
+        return self.period_stat.get_generic_stat(self.repo, date)
 
     def get_home_stats(self):
         '''
@@ -107,26 +112,26 @@ class StatService():
     def get_generic_week(self, week_beginning_date : str | datetime | None = None):
         # 1.1 Get all the dates for the current week
         # assuming Monday is the start of the week
-        if not week_beginning_date :
-            week_beginning_date = datetime.today()
-        if isinstance(week_beginning_date, str):
-            week_beginning_date = datetime.strptime(week_beginning_date, '%Y-%m-%d')
-
-        start_of_week = week_beginning_date - timedelta(days=week_beginning_date.weekday())
-        end_of_week = start_of_week + timedelta(days=6)
+        # if not week_beginning_date :
+        #     week_beginning_date = datetime.today()
+        # if isinstance(week_beginning_date, str):
+        #     week_beginning_date = datetime.strptime(week_beginning_date, '%Y-%m-%d')
+        # start_of_week = week_beginning_date - timedelta(days=week_beginning_date.weekday())
+        # end_of_week = start_of_week + timedelta(days=6)
             
-        days_in_week = self.get_column_dates_for("week", start_of_week)
-        time_per_day = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
-        len_fill = 7 - len(time_per_day)
+        # days_in_week = self.get_column_dates_for("week", start_of_week)
+        # time_per_day = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
+        # len_fill = 7 - len(time_per_day)
 
-        # 1.2. Get task_time_ratio for every day of the week.     
-        ratios = self.repo.get_task_time_per_day_between(start_of_week, end_of_week)
-        stacked = self.create_apex_bar_chart_object(ratios, days_in_week, len_fill)
+        # # 1.2. Get task_time_ratio for every day of the week.     
+        # ratios = self.repo.get_task_time_per_day_between(start_of_week, end_of_week)
+        # stacked = self.create_apex_bar_chart_object(ratios, days_in_week, len_fill)
 
-        # 2. Total time per day of the week
-        days_line_chart = self.create_apex_line_chart_object(time_per_day, len_fill)
+        # # 2. Total time per day of the week
+        # days_line_chart = self.create_apex_line_chart_object(time_per_day, len_fill)
 
-        return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
+        # return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
+        self.ggs(week_beginning_date)
     
 
     def get_generic_month(self, month : datetime | None = None):
@@ -292,7 +297,7 @@ class DayStat():
                 }
 
     def get_generic_stat(self) :
-        pass
+        raise NotImplementedError("This function does not exist for this period.")
 
 
 class WeekStat():
@@ -306,12 +311,59 @@ class WeekStat():
                     "mean": formatted_mean_week.split(":")
                 }
 
-    def get_generic_stat(self) :
-        pass
 
-    def get_column_date(self, date : datetime | None = None):
+    def get_generic_stat(self, repo : SqliteStatRepository, week_beginning_date : datetime | None = None) :
+        # 1.1 Get all the dates for the current week
+        # assuming Monday is the start of the week
+        if not week_beginning_date :
+            week_beginning_date = datetime.today()
+        if isinstance(week_beginning_date, str):
+            week_beginning_date = datetime.strptime(week_beginning_date, '%Y-%m-%d')
+
+        start_of_week = week_beginning_date - timedelta(days=week_beginning_date.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+            
+        days_in_week = self.get_column_dates(start_of_week)
+        time_per_day = repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
+        len_fill = 7 - len(time_per_day)
+
+        # 1.2. Get task_time_ratio for every day of the week.     
+        ratios = repo.get_task_time_per_day_between(start_of_week, end_of_week)
+        stacked = self.create_apex_bar_chart_object(ratios, days_in_week, len_fill)
+
+        # 2. Total time per day of the week
+        days_line_chart = self.create_apex_line_chart_object(time_per_day, len_fill)
+
+        return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
+
+
+    def get_column_dates(self, date : datetime | None = None):
         start_of_week = date - timedelta(days=date.weekday())
         return [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])] 
+    
+
+    def create_apex_bar_chart_object(self, ratios : list, time_unit_array : list, fill : int):
+        '''
+            Format data object for apexcharts StackedBar in front.
+        '''
+        # Makes a list of the set of tasks so we can get an index
+        tasks = list({t for _,t,_,_,_ in ratios})
+        # Creating an object with values prefilled for each day of the week
+        stacked = [{"name" : t, "data" : [0] * ( len(time_unit_array) + fill )} for t in tasks]
+        
+        for date, task, _, _, ratio in ratios:
+            stacked[tasks.index(task)]["data"][time_unit_array.index(date)] = ratio
+
+        return stacked
+    
+
+    def create_apex_line_chart_object(self, times : list[str], fill : int):
+        '''
+            Format data object for apexcharts LineBar in front.
+        '''
+        line = {"name" : "Total time", "data" : [time for _,time in times]}
+        line["data"].extend([None] * fill)
+        return line
 
     
 class MonthStat():
