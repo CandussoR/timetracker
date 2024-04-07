@@ -199,7 +199,6 @@ class SqliteStatRepository():
            or time on subtasks of a certain task.
            Takes a dict with a period key for clarity and date(s) as strings, return a tuple (date, task, total_time, ratio)
         '''
-            # where_clause = self._calculate_task_ratio_where_clause(params)
         where_clause = self.build_where_clause_from_dict(params)
 
         query = f"""
