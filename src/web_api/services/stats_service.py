@@ -15,6 +15,7 @@ class BaseStatService():
     def __init__(self, connexion : Connection | None = None, request : ImmutableMultiDict | None = None):
         self.connexion = g._database if connexion == None else connexion
         self.repo = SqliteStatRepository(self.connexion)
+        self.original_request = request if request else None
         self.request = convert_to_custom_dict(request) if request else None
     
 
@@ -37,7 +38,6 @@ class BaseStatService():
         '''
 
         res = self.repo.get_task_time_ratio(self.request)
-        print(res)
         if res == None:
             return []
         
@@ -51,68 +51,19 @@ class BaseStatService():
             else :
                 data.append({"task" : task, "time": time, "formatted": format_time(time, 'hour'), "ratio" : ratio})
         return data
-    
 
-    # def get_custom_stats(self, params : ImmutableMultiDict):
-    #     '''
-    #         possible keys in the params dict :
-    #             "day", "week", "year", "month", "rangeBeginning", "rangeEnding", "task", "subtask", "tag", "logs", "logSearch".
-    #     '''
-    #     response_object = {}
-    #     time_format = '%Y-%m-%d'
 
-    #     # # If normal period, just call the generic function for that period, with specific date :
-    #     conditions = convert_to_custom_dict(params)
-    #     keys = conditions.keys()
+    def create_apex_line_chart_object(self, times : list[str], fill : int = 0, fill_value = None):
+        '''
+            Format data object for apexcharts LineBar in front.
+            Returns a dict `{"name" : "Total time", "data": [an, array, of, int]}`
+        '''
+        line = {"name" : "Total time", "data" : [time for _,time in times]}
+        line["data"].extend([fill_value] * fill)
+        return line
 
-    #     if "stats" in keys:
-    #         for i, item in enumerate(conditions["stats"]):
-    #             match(item["element"]):
-    #                 case('line-chart'):
-    #                     response_object["stats"][i] = self.create_apex_line_chart_object()
-    #                 case('stacked-column-chart'):
-    #                     ratios = self.get_task_time_ratio(params)
-    #                     time_unit_array = self.get_column_dates_for(item["period"])
-    #                     response_object["stats"][i]= self.create_apex_bar_chart_object(ratios, time_unit_array)
-    #                 case('task-ratio'):
-    #                     response_object["stats"][i]= self.get_task_time_ratio(conditions)
-    #                 case('subtask-ratio'):
-    #                     response_object["stats"][i] = self.repo.get_subtask_time_ratio(conditions)
-    #                 case('_'):
-    #                     raise ValueError("Wrong value for stat element.")
 
-    #     if "day" in keys:
-    #         print("do sth")
-    #     elif "weekStart" in keys or "weekEnd" in keys:
-    #         response_object["generic"] = self.get_generic_week(conditions["weekStart"])
-    #     elif "month" in keys:
-    #         response_object["generic"] = self.get_generic_month(conditions["month"])
-    #     elif "year" in keys:
-    #         response_object["generic"] = self.get_generic_year(conditions["year"])
-    #     elif "rangeBeginning" in keys:
-    #         if not "rangeEnding" in keys:
-    #             conditions["rangeEnding"] = datetime.today().strftime(time_format)
-
-    #         days_in_range = datetime.strptime(conditions["rangeEnding"], time_format) - datetime.strptime(conditions["rangeBeginning"], time_format)
-    #         days_in_range = int(days_in_range.total_seconds() / 86400)
-    #         if days_in_range > 1 and days_in_range < 7:
-    #             print("get a week-like stats bro")
-    #             # Get task_time_ratio
-    #             # Get chart for multiple days
-    #             # Get bar line for times per day, I guess.
-    #         elif days_in_range > 7 and days_in_range <= 31:
-    #             print("get a monthlike thing")
-    #         else:
-    #             print("get a year-like graph maybe ? dunno")
-    #             response_object["stats"] = "yeah it's custom but it's not out yet"   
-
-    #     if "logs" in keys:
-    #         time_record_service = TimeRecordService()
-    #         response_object["logs"] = time_record_service.get_by(params)        
-        
-    #     return response_object
-    
-    def create_apex_bar_chart_object(self, ratios : list, time_unit_array : list, fill : int):
+    def create_apex_bar_chart_object(self, ratios : list, time_unit_array : list, fill : int = 0):
         '''
             Format data object for apexcharts StackedBar in front.
         '''
@@ -126,15 +77,6 @@ class BaseStatService():
 
         return stacked
     
-
-    def create_apex_line_chart_object(self, times : list[str], fill : int):
-        '''
-            Format data object for apexcharts LineBar in front.
-        '''
-        line = {"name" : "Total time", "data" : [time for _,time in times]}
-        line["data"].extend([None] * fill)
-        return line
-
 
 class DayStatService(BaseStatService):
     def __init__(self, connexion : Optional[Connection], request: Optional[ImmutableMultiDict] = None):
@@ -287,12 +229,14 @@ class YearStatService(BaseStatService):
                     "time" : format_time(self.repo.total_time("year") or 0, "day").split(":")
                 }
 
+
     def get_task_time_ratio(self):
         if "period" in self.request and not "year" in self.request:
             self.request["year"] = datetime.now()
         self.request["year"]= self.request["year"].strftime('%Y')
         return super().get_task_time_ratio()
     
+
     def get_generic_stat(self, year : datetime) :
         # 1.2. Get task_time_ratio for every month of year.
         if year is None:
@@ -333,6 +277,130 @@ class YearStatService(BaseStatService):
             raise Exception(e) from e
         
 
+class CustomStatService(BaseStatService):
+    def __init__(self, connexion : Connection, request : ImmutableMultiDict):
+        super().__init__(connexion, request)
+        self.period, self.dates = self.get_period_and_dates(self.request)
+        self.stat_elements = self.request.setdefault("stats", False)
+        self.logs = self.request.setdefault("logs", False)
+
+
+    def get_period_and_dates(self, request : dict) -> tuple[str, list[datetime]] :
+        keys = request.keys()
+        
+        if "day" in keys :
+            return "day", [request["day"]]
+        
+        elif "weekStart" in keys :
+            return "week", [request["weekStart"], request["weekEnd"]]
+        
+        elif "month" in keys :
+            year, month = request["month"].year, request["month"].month
+            last_day = calendar.monthrange(year, month)[1] 
+            return "month", [datetime(year, month, 1), datetime(year, month, last_day)]
+        
+        elif "year" in keys :
+            return "year", [request["year"], datetime(request["year"].year, 12, 31)]
+        
+        elif "rangeBeginning" in keys :
+            return "custom", [request["rangeBeginning"], request["rangeEnding"]]
+
+        else:
+            raise KeyError("Requested period doesn't exist.")
+
+
+    def generate_labels(self, period, date_range : list[datetime]):
+        if len(date_range) == 1 : return [date_range[0].strftime('%Y-%m-%d')]
+
+        labels = []
+        start_date, end_date = date_range
+        
+        if period == "day":
+            labels = [*map(lambda x : x.strftime('%Y-%m-%d'), [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)])]
+
+        elif period == "week":
+            _, first_week, _ = start_date.isocalendar()
+            _, last_week, _ = end_date.isocalendar()
+            if first_week <= last_week:
+                labels = [f'{week:02d}' for week in range(first_week, last_week+1)]
+            else:
+                labels = [f'{week:02d}' for week in range(first_week, 52+1)] + [f'{week:02d}' for week in range(1, last_week+1)]
+
+        elif period == "month":
+            if start_date.year == end_date.year:
+                labels = [f"{start_date.year}-{month:02d}" for month in range(start_date.month, end_date.month+1)]
+            else:
+                labels.extend([f"{start_date.year}-{month:02d}" for month in range(start_date.month, 12+1)])
+                labels.extend([f"{end_date.year}-{month:02d}" for month in range(1, end_date.month+1)])
+
+        elif period == "year":
+            labels = [str(start_date.year)] if start_date.year == end_date.year else [str(year) for year in range(start_date.year, end_date.year+1)] 
+
+        else:
+            raise ValueError("Invalid period provided. Please choose from 'day', 'week', 'month', or 'year'.")
+        
+        return labels
+
+
+    def get_custom_stats(self) -> dict:
+        '''
+            possible keys in the params dict :
+                "day", "week", "year", "month", "rangeBeginning", "rangeEnding", "task", "subtask", "tag", "stats", "logs", "logSearch".
+        '''
+        response_object = {}
+
+        keys = self.request.keys()
+
+        if "stats" in keys:
+            response_object["stats"] = [{} for x in self.request["stats"]]
+            for i, e in enumerate(self.stat_elements):
+
+                _, dates = self.get_period_and_dates(self.request)
+
+                if e["element"] == 'task-ratio':
+                    response_object["stats"][i][e["element"]] = "task_ratio"
+                    continue
+                elif e["element"] == 'subtask-ratio':
+                    response_object["stats"][i][e["element"]] = "subtask_ratio"
+                    continue
+ 
+                labels = self.generate_labels(e["period"], [*self.dates])
+                times = self._get_time_strategy(e["period"], dates)
+                len_fill = len(labels) - len(times)
+                if e["element"] == 'line-chart':
+                    response_object["stats"][i][e["element"]] = super().create_apex_line_chart_object(times, len_fill, 0)
+                elif e["element"] == 'stacked-column-chart':
+                    #TODO : refactor repo.task_time_per_X_in_Y
+                    response_object["stats"][i][e["element"]] = "stacked"
+                else :
+                    raise KeyError("Wrong value for stat element.")
+
+        if (set(["day", "weekStart", "month", "year"]).issubset(keys) 
+            and not "stats" in keys 
+            and not "logs" in keys):
+            StatServiceFactory().create_stat_service(self.connexion, self.original_request).get_generic_stat(), 200
+
+        if self.logs:
+            time_record_service = TimeRecordService()
+            response_object["logs"] = time_record_service.get_by(self.request)        
+        
+        return response_object
+    
+
+    def _get_time_strategy(self, for_period : str, dates : list[datetime]):
+        match(for_period):
+            case("day"):
+                return self.repo.total_time_per_day_in_range(*dates)
+            case("week"):
+                years = list(map(lambda x : str(x.year), dates))
+                weeks = list(map(lambda x : f'{x.isocalendar()[1]:02d}', dates))
+                return self.repo.total_time_per_week_in_range(years, weeks[0], weeks[1])
+            case("month"):
+                return self.repo.total_time_per_month_in_range(*dates)
+            case("year"):
+                return self.repo.total_time_per_year_in_range(list(map(lambda x : str(x.year), dates)))        
+        
+
 class StatServiceFactory():
     '''
         Factory that creates the service depending on a "period" key or a time span key (day, weekStart, month, year).
@@ -348,6 +416,9 @@ class StatServiceFactory():
     
     @staticmethod
     def create_stat_object(request_dict: dict, init_attributes: dict) -> DayStatService|WeekStatService|MonthStatService|YearStatService|None:
+        '''
+            Takes in the converted request with the init_attributes for services, dict with connexion and request (unconverted) as keys.
+        '''
         if request_dict is None:
             return BaseStatService(**init_attributes)
 
@@ -363,5 +434,7 @@ class StatServiceFactory():
             return MonthStatService(**init_attributes)
         elif "year" in haystack:
             return YearStatService(**init_attributes)
+        elif "rangeBeginning" in haystack:
+            return CustomStatService(**init_attributes)
         else:
             raise KeyError("No existing service for this.")

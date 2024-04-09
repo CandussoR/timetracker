@@ -290,19 +290,20 @@ class SqliteStatRepository():
         return self.connexion.execute(query, [month.strftime('%Y-%m')]).fetchall()
 
 
-    def total_time_per_week_in_range(self, year : int, week1 : int, week2 : int) -> tuple:
+    def total_time_per_week_in_range(self, years : list[str], week1 : str, week2 : str) -> list[tuple]:
         '''
             Takes ints as week1 and week2, returns a tuple (num_week, time_per_week).
         '''
+
+        year_arg = ",".join(['?' for y in years])
         query= f'''
             WITH sub AS (
                 SELECT 
                     strftime('%W', date) as num_week,
                     time_elapsed
                 FROM timer_data
-                    JOIN tasks ON timer_data.task_id = tasks.id
                 WHERE strftime('%W', date) BETWEEN ? and ?
-                AND strftime('%Y', date) = ?
+                AND strftime('%Y', date) IN ({year_arg})
             ),
             sub2 AS (
                 SELECT 
@@ -316,8 +317,9 @@ class SqliteStatRepository():
             WHERE row_num = 1
             ORDER BY num_week ASC;
             '''
-        return self.connexion.execute(query, (week1, week2, year)).fetchall()
+        return self.connexion.execute(query, (week1, week2, *years)).fetchall()
     
+
     def total_time_per_week_for_years(self, years : datetime = None) -> list[tuple]:
         '''Potentially takes a list of years and returns an array of (year, week, week_start, week_end, total_time).'''
 
@@ -455,26 +457,26 @@ class SqliteStatRepository():
                                 FROM base;'''
         elif not "date" in keys and not "tag" in keys:
             query = f'''WITH base AS (
-                                        SELECT date, 
-                                            t.task_name, 
-                                            t.subtask, 
-                                            time_elapsed, 
-                                            SUM(time_elapsed) OVER (PARTITION BY t.task_name) AS time_for_task, 
-                                            SUM(time_elapsed) OVER (PARTITION BY t.task_name, t.subtask) AS time_for_subtask 
-                                        FROM timer_data 
-                                        JOIN tasks t ON t.id = timer_data.task_id 
-                                        WHERE {where_clause}), 
-                                    numbered AS (
-                                        SELECT *, ROW_NUMBER() OVER (PARTITION BY time_for_task, time_for_subtask) as row_num 
-                                        FROM base) 
-                                    SELECT date, 
-                                        task_name, 
-                                        subtask, 
-                                        time_for_task, 
-                                        time_for_subtask, 
-                                        ROUND((time_for_subtask/time_for_task)* 100, 1) AS ratio 
-                                    FROM numbered 
-                                    WHERE row_num = 1;'''
+                            SELECT date, 
+                                t.task_name, 
+                                t.subtask, 
+                                time_elapsed, 
+                                SUM(time_elapsed) OVER (PARTITION BY t.task_name) AS time_for_task, 
+                                SUM(time_elapsed) OVER (PARTITION BY t.task_name, t.subtask) AS time_for_subtask 
+                            FROM timer_data 
+                            JOIN tasks t ON t.id = timer_data.task_id 
+                            WHERE {where_clause}), 
+                        numbered AS (
+                            SELECT *, ROW_NUMBER() OVER (PARTITION BY time_for_task, time_for_subtask) as row_num 
+                            FROM base) 
+                        SELECT date, 
+                            task_name, 
+                            subtask, 
+                            time_for_task, 
+                            time_for_subtask, 
+                            ROUND((time_for_subtask/time_for_task)* 100, 1) AS ratio 
+                        FROM numbered 
+                        WHERE row_num = 1;'''
         elif "tag" in keys:
             query = f'''WITH base AS (
                             SELECT date, 
@@ -503,9 +505,9 @@ class SqliteStatRepository():
                             WHERE row_num = 1;'''
         return self.connexion.execute(query, params).fetchall()
     
-    def total_time_per_month_in_range(self, month1 : int, month2 : int) -> tuple:
+    def total_time_per_month_in_range(self, month1 : str, month2 : str) -> list[tuple]:
         '''
-            Takes "YYYY-mm" string as week1 and week2, returns a tuple (month, time_per_month).
+            Takes "YYYY-mm" string as week1 and week2, returns a list of tuple (month, time_per_month).
         '''
         query= f'''
             WITH sub AS (
@@ -529,6 +531,57 @@ class SqliteStatRepository():
             ORDER BY month ASC;
             '''
         return self.connexion.execute(query, (month1, month2)).fetchall()
+    
+    def total_time_per_year_in_range(self, years : list[datetime]) -> list[tuple]:
+        year_param = ','.join(['?' for y in years])
+        query= f'''
+            WITH sub AS (
+                SELECT 
+                    strftime('%Y', date) as year,
+                    time_elapsed
+                FROM timer_data
+                WHERE strftime('%Y', date) IN ({year_param})
+            ),
+            sub2 AS (
+                SELECT year,
+                    SUM(time_elapsed) OVER (PARTITION BY year) as time_per_year,
+                    ROW_NUMBER() OVER (PARTITION BY year) as row_num
+                FROM sub
+                ORDER BY year
+            )
+            SELECT year, time_per_year
+            FROM sub2
+            WHERE row_num = 1
+            ORDER BY year ASC;
+            '''
+        return self.connexion.execute(query, [*years]).fetchall() 
+
+
+    def total_time_per_week_for_years(self, years : datetime = None) -> list[tuple]:
+        '''Potentially takes a list of years and returns an array of (year, week, week_start, week_end, total_time).'''
+        year_arg = ",".join(['?' for y in years])
+        query= f'''
+            WITH sub AS (
+                SELECT 
+                    strftime('%Y', date) as year,
+                    time_elapsed
+                FROM timer_data
+                    JOIN tasks ON timer_data.task_id = tasks.id
+                WHERE strftime('%Y', date) IN ({year_arg})
+            ),
+            sub2 AS (
+                SELECT 
+                    year,
+                    SUM(time_elapsed) OVER (PARTITION BY year) as time_per_week,
+                    ROW_NUMBER() OVER (PARTITION BY year) as row_num
+                FROM sub
+            )
+            SELECT year, time_per_week
+            FROM sub2
+            WHERE row_num = 1
+            ORDER BY year ASC;
+            '''
+        return self.connexion.execute(query, [*years]).fetchall()
     
     def mean_time_per_period(self, period : Literal["day", "week", "month", "year"]) -> int:
         match period:
