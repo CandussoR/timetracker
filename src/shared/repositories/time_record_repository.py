@@ -10,6 +10,7 @@ class SqliteTimeRecordRepository():
 
 
     def __init__(self, connexion : Optional[Connection] = None, db_name : Optional[str] = None) :
+        if connexion is None and db_name is None : raise ValueError("Missing init argument")
         self.connexion = connexion if connexion is not None else connect(db_name)
 
 
@@ -31,31 +32,24 @@ class SqliteTimeRecordRepository():
     def get_by(self, conditions : dict) -> list[tuple]:
         keys = conditions.keys()
         parameters = []
-        try:
-            if "date" in keys:
-                parameters.append("date = (:date)")
-            if set(["weekStart", "weekEnd"]).issubset(keys):
-                parameters.append(f"date BETWEEN (:weekStart) AND (:weekEnd)")
-            if set(["rangeBeginning", "rangeEnd"]).issubset(keys):
-                parameters.append("date BETWEEN (:rangeBeginning) AND (:rangeEnd)")
-            if "year" in keys :
-                year = conditions["year"]
-                like = f"'{year}%'"
-                parameters.append(f"date LIKE {like}")
-            if "month" in keys:
-                month = conditions["month"]
-                like = f"'{month}%'"
-                parameters.append(f"date LIKE {like}")
+        if "day" in keys:
+            parameters.append("date = date(:day)")
+        elif set(["weekStart", "weekEnd"]).issubset(keys):
+            parameters.append(f"date BETWEEN date(:weekStart) AND date(:weekEnd)")
+        elif set(["rangeBeginning", "rangeEnding"]).issubset(keys):
+            parameters.append("date BETWEEN date(:rangeBeginning) AND date(:rangeEnding)")
+        elif "year" in keys :
+            parameters.append(f"strftime('%Y', date) = strftime('%Y', date(:year))")
+        elif "month" in keys:
+            parameters.append(f"strftime('%Y-%m', date) = strftime('%Y-%m', date(:month))")
 
-            if "task" in keys and not "subtask" in keys:
-                parameters.append("tasks.task_name = (:task)")
-            elif set(["task", "subtask"]).issubset(keys):
-                parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
-                
-            if "tag" in keys:
-                parameters.append("tags.tag = (:tag)")
-        except Exception as e:
-            print(e)
+        if "task" in keys and not "subtask" in keys:
+            parameters.append("tasks.task_name = (:task)")
+        elif set(["task", "subtask"]).issubset(keys):
+            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
+            
+        if "tag" in keys:
+            parameters.append("tags.tag = (:tag)")
 
         query = f'''SELECT td.guid,
                           tasks.task_name,
