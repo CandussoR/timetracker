@@ -1,5 +1,6 @@
 import datetime
-from typing import Literal
+from sqlite3 import Connection
+from typing import Optional
 from flask import g
 from marshmallow import EXCLUDE, ValidationError
 from src.shared.models.time_record import TimeRecordInput, TimeRecordResource
@@ -7,15 +8,19 @@ from src.shared.repositories.tag_repository import SqliteTagRepository
 from src.shared.repositories.task_repository import SqliteTaskRepository
 from src.shared.repositories.time_record_repository import SqliteTimeRecordRepository
 from src.web_api.schemas.time_record_schema import TimeRecordBeginningRequestSchema, TimeRecordEndingRequestSchema, TimeRecordRequestSchema, TimeRecordSchema
-
+import src.shared.database.sqlite_db as sqlite_db
+from werkzeug.datastructures import ImmutableMultiDict
 
 class TimeRecordService():
-    def __init__(self, db : str | None = None):
-        self.connexion = db if db is not None else g._database 
+    def __init__(self, db : str | None = None, connexion : Optional[Connection] = None):
+        if connexion is None:
+            self.connexion = g._database if db is None else sqlite_db.connect(db)
+        else :
+            self.connexion = connexion
         self.repo = SqliteTimeRecordRepository(self.connexion)
     
 
-    def get(self, guid : str):
+    def get(self, guid : str) -> dict:
         data = self.repo.get(guid)
         if data is None:
             raise ValueError("Ressource cannot be found.")
@@ -24,25 +29,29 @@ class TimeRecordService():
             return TimeRecordSchema().dump(tr)
     
     def get_by(self, params : dict):
+        '''Receives an ImmutableMultiDict in parameter and returns a list of TimeRecords.'''
         # Converting ImmutableMultiDict to dict
-        conditions = {}
-        for k in params :
-            if k == "week[]":
-                continue
-            else:
-                conditions[k] = params[k]
-        if "week[]" in params:
-            # keeping the camel case to go with rangeBeginning etc.
-            # parsing like this for the bindings in the sqlite query and passing the dictionary : less hassle, but coupled
-            [conditions["weekStart"], conditions["weekEnd"]] = params.getlist("week[]")
+        is_multidict = isinstance(params, ImmutableMultiDict)
+        conditions = params if not is_multidict else {}
+        if not conditions:
+            for k in params :
+                if k == "week[]":
+                    continue
+                else:
+                    conditions[k] = params[k]
+            if "week[]" in params:
+                # keeping the camel case to go with rangeBeginning etc.
+                # parsing like this for the bindings in the sqlite query and passing the dictionary : less hassle, but coupled
+                [conditions["weekStart"], conditions["weekEnd"]] = params.getlist("week[]")
         # To business
         data = self.repo.get_by(conditions)
         tr = [TimeRecordResource(*d) for d in data]
         return TimeRecordSchema().dump(tr, many=True)
 
-    def post(self, time_record_type : str, data : dict) -> str:
+    def post(self, time_record_type : str, data : dict) -> dict:
         # Forced to use unknown=EXLUDE for Schema validation
-        # because it receives task and tag guids and then try to find their IDs.     
+        # because it receives task and tag guids and then try to find their IDs. 
+        assert self.connexion != None    
         time_record = TimeRecordInput()
 
         try:
@@ -58,7 +67,7 @@ class TimeRecordService():
                     raise ValueError("Guid doesn't exist.")
                 time_record.tag_id = tag_id
         except KeyError:
-            print("Key Error, let's move on")
+            pass
 
         match time_record_type:
             case "old" :
@@ -77,7 +86,7 @@ class TimeRecordService():
         return self.get(time_record.guid)
     
 
-    def update(self, operation_type : str, data : dict) -> TimeRecordResource:
+    def update(self, operation_type : str, data : dict) -> dict:
         time_record = TimeRecordInput()
         try:
             if task_guid := data["task_guid"]:
