@@ -1,9 +1,7 @@
 from sqlite3 import connect
-import sqlite3
 from typing import Literal, Optional, Tuple, Union
 from sqlite3.dbapi2 import Connection
-from datetime import datetime, timedelta
-from src.shared.repositories.sqlite_query_builder import SqliteQueryBuilder
+from datetime import datetime
 
 class SqliteStatRepository():
 
@@ -256,9 +254,9 @@ class SqliteStatRepository():
         return self.connexion.execute(query, [*range]).fetchall()
 
 
-    def get_task_time_per_day_between(self, start : str, end : str):
+    def get_task_time_per_day_between(self, start : datetime, end : datetime):
         '''
-            Param : week -> number of the week.
+            Param : start & end, datetimes.
             Returns (date, task_name, time_per_task, time_per_day, ratio).
         '''
         query = '''WITH tpd AS (
@@ -491,7 +489,7 @@ class SqliteStatRepository():
     
     def total_time_per_month_in_range(self, month1 : datetime, month2 : datetime) -> list[tuple]:
         '''
-            Takes "YYYY-mm" string as week1 and week2, returns a list of tuple (month, time_per_month).
+            Takes datetimes as week1 and week2, returns a list of tuple (month, time_per_month).
         '''
         query= f'''
             WITH sub AS (
@@ -500,7 +498,7 @@ class SqliteStatRepository():
                     time_elapsed
                 FROM timer_data
                     JOIN tasks ON timer_data.task_id = tasks.id
-                WHERE strftime('%Y-%m', date) BETWEEN strftime('%Y-%m', ?) and strftime('%Y-%m', ?)
+                WHERE strftime('%Y-%m', date) BETWEEN strftime('%Y-%m', date(?)) and strftime('%Y-%m', date(?))
             ),
             sub2 AS (
                 SELECT month,
@@ -518,7 +516,7 @@ class SqliteStatRepository():
     
 
     def total_time_per_year_in_range(self, years : list[datetime]) -> list[tuple]:
-        year_param = ','.join(['?' for y in years])
+        year_param = ','.join(["strftime('%Y', ?)" * len(years)])
         query= f'''
             WITH sub AS (
                 SELECT 
@@ -543,6 +541,7 @@ class SqliteStatRepository():
 
 
     def mean_time_per_period(self, period : Literal["day", "week", "month", "year"]) -> int:
+        '''Returns an int which is the time elapsed in seconds.'''
         match period:
             case "day":
                 query = '''WITH f AS (

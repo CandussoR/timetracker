@@ -17,7 +17,6 @@ class BaseStatService():
         self.connexion = g._database if connexion == None else connexion
         self.repo = SqliteStatRepository(self.connexion)
         self.original_request = request if request else None
-        print(self.original_request, "original request in init")
         self.request = convert_to_custom_dict(request) if request else None
         if self.request :
             self.period, self.dates = self.get_period_and_dates(self.request)
@@ -103,7 +102,7 @@ class BaseStatService():
         return data
 
 
-    def create_apex_line_chart_object(self, times : list[str], fill : int = 0, fill_value = None):
+    def create_apex_line_chart_object(self, times : list[tuple], fill : int = 0, fill_value = None):
         '''
             Format data object for apexcharts LineBar in front.
             Returns a dict `{"name" : "Total time", "data": [an, array, of, int]}`
@@ -196,7 +195,7 @@ class WeekStatService(BaseStatService):
 
 
     def get_column_dates(self, date : datetime | None = None):
-
+        assert date is not None
         start_of_week = date - timedelta(days=date.weekday())
         return [*map(lambda x : x.strftime('%Y-%m-%d'), [start_of_week + timedelta(days=i) for i in range(7)])]
 
@@ -231,7 +230,7 @@ class MonthStatService(BaseStatService):
         return super().get_task_time_ratio(range)
 
 
-    def get_generic_stat(self, month : datetime | str = None) -> dict:
+    def get_generic_stat(self, month : Optional[datetime | str] = None) -> dict:
         '''
             Gets a datetime object "YYYY-MM-DD" and returns a dict with :
             `weeks` : the week numbers of the month,
@@ -286,7 +285,8 @@ class YearStatService(BaseStatService):
 
         ratios = self.repo.get_task_time_per_month_in_year(year)
         months = self.get_column_dates(year)
-        time_per_month = self.repo.total_time_per_month_in_range(months[0], months[-1])
+        dates = list(map(lambda x : datetime.strptime(x, '%Y-%m'), [months[0], months[-1]]))
+        time_per_month = self.repo.total_time_per_month_in_range(*dates)
         len_fill = 12 - len(time_per_month)
 
         stacked = super().create_apex_stacked_column_chart(ratios, months, len_fill)
