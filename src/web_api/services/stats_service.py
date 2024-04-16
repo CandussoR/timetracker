@@ -17,6 +17,7 @@ class BaseStatService():
         self.connexion = g._database if connexion == None else connexion
         self.repo = SqliteStatRepository(self.connexion)
         self.original_request = request if request else None
+        print(self.original_request, "original request in init")
         self.request = convert_to_custom_dict(request) if request else None
         if self.request :
             self.period, self.dates = self.get_period_and_dates(self.request)
@@ -135,14 +136,12 @@ class DayStatService(BaseStatService):
     def get_home_stat(self):
         return  {
                 "count": self.repo.timer_count("today"),
-                "time" : format_time(self.repo.total_time("today") or 0, "hour").split(":"),
-                "mean" : format_time(self.repo.mean_time_per_period("day"), "hour").split(":")
+                "time" : format_time(self.repo.total_time("today") or 0, "hour", split=True),
+                "mean" : format_time(self.repo.mean_time_per_period("day"), "hour", split=True)
                 }
 
 
     def get_task_time_ratio(self, range : list[datetime]):
-        # if "period" in self.request or not "day" in self.request:
-        #     self.request["day"] = datetime.now()
         return super().get_task_time_ratio(range)
 
 
@@ -157,11 +156,11 @@ class WeekStatService(BaseStatService):
 
     def get_home_stat(self):
         mean_week = self.repo.mean_time_per_period("week")
-        formatted_mean_week = format_time(mean_week, "day") if mean_week > 86400 else format_time(mean_week, "hour")
+        formatted_mean_week = format_time(mean_week, "day", split=True) if mean_week > 86400 else format_time(mean_week, "hour", split=True)
         return {
                     "count": self.repo.timer_count("week"),
-                    "time" : format_time(self.repo.total_time("week") or 0, "hour").split(":"),
-                    "mean": formatted_mean_week.split(":")
+                    "time" : format_time(self.repo.total_time("week") or 0, "hour", split=True),
+                    "mean": formatted_mean_week
                 }
 
 
@@ -169,8 +168,6 @@ class WeekStatService(BaseStatService):
         '''
             Get task_time_ratio according to the request passed : either with period, or with pair weekStart and weekEnd.
         '''
-        # if "period" in self.request:
-        #     self.request["weekStart"], self.request["weekEnd"] = map(lambda x : x.strftime("%Y-%m-%d"), self._get_week_range())
         return super().get_task_time_ratio(range)
 
 
@@ -219,11 +216,11 @@ class MonthStatService(BaseStatService):
 
     def get_home_stat(self):
         mean_month = self.repo.mean_time_per_period("month")
-        formatted_mean_month = format_time(mean_month, "day") if mean_month > 86400 else format_time(mean_month, "hour")
+        formatted_mean_month = format_time(mean_month, "day", split=True) if mean_month > 86400 else format_time(mean_month, "hour", split=True)
         return {
                     "count": self.repo.timer_count("month"),
-                    "time" : format_time(self.repo.total_time("month") or 0, "day").split(":"),
-                    "mean" : formatted_mean_month.split(":")
+                    "time" : format_time(self.repo.total_time("month") or 0, "day", split=True),
+                    "mean" : formatted_mean_month
                 }
 
 
@@ -275,12 +272,10 @@ class YearStatService(BaseStatService):
     def get_home_stat(self):
         return {
                     "count": self.repo.timer_count("year"),
-                    "time" : format_time(self.repo.total_time("year") or 0, "day").split(":")
+                    "time" : format_time(self.repo.total_time("year") or 0, "day", split=True)
                 }
 
     def get_task_time_ratio(self, range : list[datetime]):
-        # if "period" in self.request and not "year" in self.request:
-        #     self.request["year"] = datetime.now().replace()
         return super().get_task_time_ratio(range)
 
 
@@ -330,7 +325,6 @@ class CustomStatService(BaseStatService):
         super().__init__(connexion, request)
         assert self.request != None
         self.logs = self.request["logs"]
-
 
     def generate_labels(self, period, date_range : list[datetime]):
         if len(date_range) == 1 : return [date_range[0].strftime('%Y-%m-%d')]
