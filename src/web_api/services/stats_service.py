@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from sqlite3 import Connection
 from typing import Optional
 from flask import g
@@ -12,7 +13,7 @@ from src.web_api.services.time_record_service import TimeRecordService
 
 
 class BaseStatService():
-    def __init__(self, connexion : Connection | None = None, request : ImmutableMultiDict | None = None):
+    def __init__(self, connexion : Connection | None = None, request : ImmutableMultiDict | dict | None = None):
         '''Request is None to get home_stats or generic stats for period related to this day, else not None.'''
         self.connexion = g._database if connexion == None else connexion
         self.repo = SqliteStatRepository(self.connexion)
@@ -43,7 +44,10 @@ class BaseStatService():
         if "day" in keys :
             return "day", [request["day"]]
 
-        elif "weekStart" in keys :
+        elif "week" in keys:
+            return "week", request["week"]
+        
+        elif set(["weekStart", "weekEnd"]).issubset(keys):
             return "week", [request["weekStart"], request["weekEnd"]]
 
         elif "month" in keys :
@@ -54,14 +58,22 @@ class BaseStatService():
         elif "year" in keys :
             return "year", [request["year"], datetime(request["year"].year, 12, 31)]
 
-        elif "rangeBeginning" in keys :
+        elif set(["rangeBeginning", "rangeEnding"]).issubset(keys) :
             return "custom", [request["rangeBeginning"], request["rangeEnding"]]
 
-        else:
-            raise KeyError("Requested period doesn't exist.")
+        elif ( (set(["day", "weekStart", "month", "year", "rangeBeginning"]).intersection(keys) == set() )
+            and "tag" in keys):
+            d = list(map(lambda x : datetime.strptime(x, "%Y-%m-%d"), self.repo.get_first_and_last_date_in_db()))
+            return "custom", d
+
+        else :
+            raise KeyError("Period is not valid")
         
     
-    def generate_dates_for_period(self, period : str) -> list[datetime]: #type: ignore
+    def generate_dates_for_period(self, period : str) -> list[datetime]:
+        '''
+            Returns a list of one date (for day) or two dates (for any range).
+        '''
         now = datetime.now()
         match(period):
             case "day":
@@ -74,7 +86,7 @@ class BaseStatService():
                 return [datetime(now.year, now.month, 1), datetime(now.year, now.month, last_day)]
             case "year":
                 return [datetime(now.year,1,1), datetime(now.year,12,31)]
-            case "_":
+            case _:
                 raise ValueError("Wrong period")
     
 
@@ -84,9 +96,8 @@ class BaseStatService():
             Otherwise, we take a specified period and do our little thing, and week is transformed in said way.
         '''
         if not range : raise ValueError("Ye not good old implementation")
-        # res = self.repo.get_task_time_ratio(self.request)
 
-        res = self.repo.get_task_time_ratio_2(range)
+        res = self.repo.get_task_time_ratio(range)
         if res == None:
             return []
 
@@ -96,9 +107,9 @@ class BaseStatService():
                 continue
             # if time exceeds a day
             if time > 86400:
-               data.append({"task" : task, "time": time, "formatted": format_time(time, 'day'), "ratio" : ratio})
+               data.append({"task" : task, "time": time, "formatted": format_time(time, 'day', split=True), "ratio" : ratio})
             else :
-                data.append({"task" : task, "time": time, "formatted": format_time(time, 'hour'), "ratio" : ratio})
+                data.append({"task" : task, "time": time, "formatted": format_time(time, 'hour', split=True), "ratio" : ratio})
         return data
 
 
@@ -133,6 +144,7 @@ class DayStatService(BaseStatService):
         super().__init__(connexion, request)
 
     def get_home_stat(self):
+        print("getting home stats from DayStatService")
         return  {
                 "count": self.repo.timer_count("today"),
                 "time" : format_time(self.repo.total_time("today") or 0, "hour", split=True),
@@ -181,7 +193,7 @@ class WeekStatService(BaseStatService):
         start_of_week, end_of_week = self._get_week_range(week_beginning_date)
 
         days_in_week = self.get_column_dates(start_of_week)
-        time_per_day = self.repo.total_time_per_day_in_range(days_in_week[0], days_in_week[-1])
+        time_per_day = self.repo.total_time_per_day_in_range({"rangeBeginning" : days_in_week[0], "rangeEnding" : days_in_week[-1]})
         len_fill = 7 - len(time_per_day)
 
         # 1.2. Get task_time_ratio for every day of the week.
@@ -224,9 +236,6 @@ class MonthStatService(BaseStatService):
 
 
     def get_task_time_ratio(self, range):
-        # if "period" in self.request and not "month" in self.request:
-        #     self.request["month"] = datetime.now()
-        # _,last_day = calendar.monthrange(self.request["month"].year, self.request["month"].month) 
         return super().get_task_time_ratio(range)
 
 
@@ -321,7 +330,7 @@ class YearStatService(BaseStatService):
 
 
 class CustomStatService(BaseStatService):
-    def __init__(self, connexion : Connection, request : ImmutableMultiDict):
+    def __init__(self, connexion : Connection, request : dict):
         super().__init__(connexion, request)
         assert self.request != None
         self.logs = self.request["logs"]
@@ -358,7 +367,6 @@ class CustomStatService(BaseStatService):
 
         return labels
 
-
     def get_custom_stats(self) -> dict:
         '''
             possible keys in the params dict :
@@ -370,45 +378,69 @@ class CustomStatService(BaseStatService):
 
         keys = self.request.keys()
 
+        if "rangeBeginning" and not "stats" in keys :
+            raise KeyError("Range must have a list of stat elements to return.")
+        
+        
         if "stats" in keys:
             response_object["stats"] = []
             for e in self.request["stats"]:
-                _, dates = self.get_period_and_dates(self.request)
+                if e["element"] == "timer-info":
+                    t_i = {
+                    "count": self.repo.timer_count(params=self.request),
+                    "time" : format_time(self.repo.total_time(params=self.request), "day", split=True)
+                    }
+                    response_object["stats"].append({e["element"] : t_i})
+                    continue
 
                 if e["element"] == 'task-ratio':
-                    response_object["stats"].append({e["element"] : super().get_task_time_ratio(dates)})
+                    response_object["stats"].append({e["element"] : super().get_task_time_ratio(self.dates)})
                     continue
                 elif e["element"] == 'subtask-ratio':
                     response_object["stats"].append({e["element"] : self.repo.get_subtask_time_ratio(self.request)})
                     continue
 
-                labels = self.generate_labels(e["period"], [*self.dates])
-                times = self._get_time_strategy(e["period"], self.dates)
+                assert e.get("column-period") is not None, "This element always need a column period"
+                assert len(self.dates) == 2
+                
+                labels = self.generate_labels(e["column-period"], self.dates)
+                times = self._get_time_strategy(e["column-period"], self.dates)
                 len_fill = len(labels) - len(times)
                 if e["element"] == 'line-chart':
-                    response_object["stats"].append({e["element"] : super().create_apex_line_chart_object(times, len_fill, 0)})
+                    d = {
+                        "labels": labels,
+                        "series": super().create_apex_line_chart_object( times, len_fill, 0),
+                        "title" : f"Total time for {e['column-period']}"
+                    }
+                    response_object["stats"].append({e["element"] : d})
                 elif e["element"] == 'stacked-column-chart':
-                    ratios = self.repo.get_task_time(e["period"], self.dates)
-                    response_object["stats"].append({e["element"] : super().create_apex_stacked_column_chart(ratios, labels)})
+                    period = e["column-period"]
+                    title = {"day" : "Task ratio per day", "week" : "Task ratio per week", "month" : "Task ratio per month", "year" : "Task ratio per day" }
+                    ratios = self.repo.get_task_time(period, self.dates)
+                    response_object["stats"].append({e["element"] : {"labels" : labels, "series" : super().create_apex_stacked_column_chart(ratios, labels), "title" : title[period]}})
                 else :
                     raise KeyError("Wrong value for stat element.")
 
         if (set(["day", "weekStart", "month", "year"]).intersection(keys)
             and not "stats" in keys
+            and not "tag" in keys
             and not "logs" in keys):
             response_object["stats"] = StatServiceFactory().create_stat_service(self.connexion, self.original_request).get_generic_stat(), 200
 
         if self.logs:
             time_record_service = TimeRecordService(connexion = self.connexion)
             response_object["logs"] = time_record_service.get_by(self.request)
-            
-        return response_object
 
+        return response_object
+    
 
     def _get_time_strategy(self, for_period : str, dates : list[datetime]) -> list:
+        #TODO : finish to refactor the different methods into one big.
+        assert self.request
+
         match(for_period):
-            case("day"):
-                return self.repo.total_time_per_day_in_range(*dates)
+            case "day":
+                return self.repo.total_time_per_day_in_range(self.request)
             case("week"):
                 years = list(map(lambda x : str(x.year), dates))
                 weeks = list(map(lambda x : f'{x.isocalendar()[1]:02d}', dates))
@@ -434,7 +466,7 @@ class StatServiceFactory():
         return StatServiceFactory.create_stat_object(request_dict, init_attributes) 
 
     @staticmethod
-    def create_stat_object(request_dict: dict, init_attributes: dict) -> BaseStatService|DayStatService|WeekStatService|MonthStatService|YearStatService|CustomStatService:
+    def create_stat_object(request_dict: dict, init_attributes: dict) -> BaseStatService|DayStatService|WeekStatService|MonthStatService|YearStatService:
         '''
             Takes in the converted request with the init_attributes for services, dict with connexion and request (unconverted) as keys.
         '''
@@ -450,7 +482,5 @@ class StatServiceFactory():
             return MonthStatService(**init_attributes)
         elif "year" in haystack:
             return YearStatService(**init_attributes)
-        elif "rangeBeginning" in haystack:
-            return CustomStatService(**init_attributes)
         else:
             raise KeyError("No existing service for this.")
