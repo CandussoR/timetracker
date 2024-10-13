@@ -3,11 +3,10 @@ import json
 class Config:
 
     def __init__(self, filepath : str):
+        self.filepath = filepath
         conf = self._load(filepath)
         self.remote_database = conf["remote_database"]
         self.local_database = conf["database"]
-        self.logs = conf["logs"]
-        self.log_path = conf["log_path"]
         self.timer_sound_path = conf["timer_sound_path"]
         self.flows = conf["flows"]
 
@@ -25,6 +24,3 @@ class Config:
         with open(self.filepath, 'w') as fw:
             json.dump(conf, fw, indent=4, separators=(',', ': '))
 
-
-if __name__ == '__main__':
-    conf = Config()
