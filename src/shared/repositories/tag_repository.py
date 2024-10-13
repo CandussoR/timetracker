@@ -46,7 +46,7 @@ class SqliteTagRepository():
     #         return self.insert_new_tag(tag)
 
 
-    def return_tag_id_if_exists(self, tag : str) -> str:
+    def return_tag_id_if_exists(self, tag : str) -> int:
         '''Only used in the Terminal User Interface.
             Returns an id, or throws a TypeError.'''
         return self.connexion.execute('SELECT id FROM tags WHERE tag=(?);', [tag]).fetchone()[0]

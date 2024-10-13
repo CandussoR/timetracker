@@ -13,7 +13,7 @@ class SqliteTaskRepository():
         return self.connexion.execute("SELECT task_name, subtask, guid FROM tasks;").fetchall()
 
 
-    def get_id_from_guid(self, guid : str):
+    def get_id_from_guid(self, guid : str) -> int:
         '''Used to convert the GUID received from the API.'''
         return self.connexion.execute("SELECT id FROM tasks WHERE guid = (?)", [guid]).fetchone()[0]
 

@@ -11,7 +11,7 @@ def timer(time_beginning : datetime, t_in_seconds: int):
             count = end_time - datetime.now()
             mins, seconds = divmod(count.seconds, 60)
             time_format = f'{mins:02d}:{seconds:02d}'
-            print(time_format, end="\r")
+            print('\t' + time_format, end="\r")
             time.sleep(1)
         except KeyboardInterrupt:
             break;
@@ -23,7 +23,7 @@ def stopwatch(time_beginning : datetime, t=0):
             count = datetime.now() - time_beginning
             mins, seconds = divmod(count.seconds, 60)
             time_format = f'{mins:02d}:{seconds:02d}'
-            print(time_format, end="\r")
+            print('\t' + time_format, end="\r")
             time.sleep(1)
         except KeyboardInterrupt:
             break

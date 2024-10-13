@@ -1,5 +1,5 @@
 # Prompt
-from datetime import datetime
+from datetime import datetime, date
 import os
 from typing import Literal, Optional
 from playsound import playsound
@@ -13,102 +13,129 @@ import src.tui.clocks.clocks as clocks
 from src.tui.input import tag_input, task_input
 from src.tui.stats import stats_facade
 
-MENU_PROMPT = f'''\n
-Select an option :
-    1) Start a timer,
-    2) Take a break,
-    3) Start a stopwatch,
-    4) Launch a Flow
-    5) See some stats,
-    6) Insert old timer,
-    7) Extend last timer to now,
-    8) Settings,
-    9) Quit.\n
-    '''
-
 
 def start(conf : Config, db_name : str):
 
+    menu_prompt = f'''\n
+    Select an option :
+        1) Start a timer,
+        2) Take a break,
+        3) Start a stopwatch,
+        4) Launch a Flow
+        5) See some stats,
+        6) Insert old timer,
+        7) Extend last timer to now,
+        8) Settings,
+        9) Quit.\n
+    > '''
+
+    # We show the prompt only at entry or after each action effectively done.
+    show_prompt = True
+    
     try:
-        while (user_input := int(input(MENU_PROMPT))) != 9:
+        while (user_input := input(menu_prompt if show_prompt else '\n    > ')) != "9":
 
-            if user_input == 1:
-                try:
-                    time_record = set_record(db_name)
-                    launch_clock_facade(db_name, time_record, "timer")
-                except KeyboardInterrupt:
-                    continue
-                print("Good job!")
-                end_of_clock_facade(db_name, conf, time_record)
+            show_prompt = False
 
-            elif user_input == 2:
-                try :
-                    launch_pause(None, conf)
-                except KeyboardInterrupt:
-                    continue
+            user_input = user_input.strip()
 
-            elif user_input == 3:
-                try:
-                    time_record = set_record(db_name)
-                    launch_clock_facade(db_name, time_record, "stopwatch")
-                except KeyboardInterrupt:
-                    continue
-                print("Good job!")
-                time_record.time_ending = datetime.now()
-                time_record.log = enter_log()
-                update_record(db_name, time_record)
-
-            elif user_input == 4:
-                try:
-                    collection = FlowCollection(conf)
-                    for i, flow in enumerate(collection.flows):
-                        sets = [str(set) for set in flow.get_sets()]
-                        print(f"    {i+1}) {flow.name} ;")
-                        print(f"\t{len(sets)} sets : {', '.join(sets)}")
-                    flow_number = int(input("    Which flow do you want to launch ?\r\n    > "))
-
-                    for i, set in enumerate(collection.flows[flow_number - 1].get_sets()):
-                        number_of_sets = len(sets)
-                        print(f"    SET N°{i+1}/{number_of_sets}")
+            if len(user_input) == 0:
+                print("\tHit Ctrl+C or 9 if you want to quit.")
+                continue
+            
+            match(user_input):
+                case "1":
+                    try:
                         time_record = set_record(db_name)
-                        launch_clock_facade(db_name, time_record, "timer", set[0] * 60)
-                        end_of_clock_facade(db_name, conf, time_record)
-                        launch_pause(set[1] * 60, conf)
-                except KeyboardInterrupt :
-                    continue
+                        launch_clock_facade(db_name, time_record, "timer")
+                    except KeyboardInterrupt:
+                        continue
+                    print("\tGood job!")
+                    end_of_clock_facade(db_name, conf, time_record)
+                    show_prompt = True
+                
+                case "2":
+                    try :
+                        launch_pause(None, conf)
+                    except KeyboardInterrupt:
+                        continue
+                    show_prompt = True
 
-            elif user_input == 5:
-                try:
+
+                case "3":
+                    try:
+                        time_record = set_record(db_name)
+                        launch_clock_facade(db_name, time_record, "stopwatch")
+                    except KeyboardInterrupt:
+                        continue
+                    print("\tGood job!")
+                    time_record.time_ending = datetime.now()
+                    time_record.log = enter_log()
+                    update_record(db_name, time_record)
+                    show_prompt = True
+
+
+                case "4":
+                    try:
+                        collection = FlowCollection(conf)
+                        for i, flow in enumerate(collection.flows):
+                            sets = [str(set) for set in flow.get_sets()]
+                            print(f"    {i+1}) {flow.name} ;")
+                            print(f"\t{len(sets)} sets : {', '.join(sets)}")
+                        flow_number = int(input("    Which flow do you want to launch ?\r\n    > "))
+                        show_prompt = True
+
+                        for i, set in enumerate(collection.flows[flow_number - 1].get_sets()):
+                            number_of_sets = len(sets)
+                            print(f"    SET N°{i+1}/{number_of_sets}")
+                            time_record = set_record(db_name)
+                            launch_clock_facade(db_name, time_record, "timer", set[0] * 60)
+                            end_of_clock_facade(db_name, conf, time_record)
+                            launch_pause(set[1] * 60, conf)
+                    except KeyboardInterrupt :
+                        continue
+
+                case "5":
+                    try:
+                        connexion = sqlite_db.connect(db_name)
+                        stats_facade.display_stats(connexion)
+                        connexion.close()
+                        show_prompt = True
+                    except KeyboardInterrupt:
+                        continue
+
+                case "6":
+                    try:
+                        time_record = set_record(db_name, old = True)
+                        connexion = sqlite_db.connect(db_name)
+                        time_record_repo = time_record_repository.SqliteTimeRecordRepository(connexion = connexion)
+                        time_record_repo.insert_old_timer(time_record)
+                        connexion.commit()
+                        connexion.close()
+                        show_prompt = True
+                    except KeyboardInterrupt:
+                        continue
+
+                case "7":
                     connexion = sqlite_db.connect(db_name)
-                    stats_facade.display_stats(connexion)
+                    time_record_repo = time_record_repository.SqliteTimeRecordRepository(connexion = connexion)
+                    time_record_repo.update_last_row_ending(datetime.now())
+                    connexion.commit()
                     connexion.close()
-                except KeyboardInterrupt:
-                    continue
+                    print("\tCouldn't leave it huh ? Updated, boss.")
 
-            elif user_input == 6:
-                time_record = set_record(db_name, old = True)
-                connexion = sqlite_db.connect(db_name)
-                time_record_repo = time_record_repository.SqliteTimeRecordRepository(connexion = connexion)
-                time_record_repo.insert_old_timer(time_record)
-                connexion.commit()
-                connexion.close()
+                case "8":
+                    print("\tNot implemented. Logs, flows, etc. Probably only in GUI.")
 
-            elif user_input == 7:
-                connexion = sqlite_db.connect(db_name)
-                time_record_repo = time_record_repository.SqliteTimeRecordRepository(connexion = connexion)
-                time_record_repo.update_last_row_ending(datetime.now())
-                connexion.commit()
-                connexion.close()
-                print("Couldn't leave it huh ? Updated, boss.")
+                case "9":
+                    print("\tBye !")
 
-            elif user_input == 8:
-                print("Not implemented. Logs, flows, etc. Probably only in GUI.")
-
-            else:
-                print("Invalid input, enter a number between 1 and 9.")
-
-    except (ValueError, KeyboardInterrupt):
-        print("See ya!\n")
+                case _:
+                    print("\tInvalid input, enter a number between 1 and 9.")
+        
+    # except (ValueError, KeyboardInterrupt):
+    except (KeyboardInterrupt):
+        print("\tBye!\n")
 
 
 def launch_clock_facade(
@@ -120,9 +147,9 @@ def launch_clock_facade(
     if duration:
         time_in_minutes = duration
     elif (not duration) and clock == "timer":
-        time_in_minutes = int(input("How long ? > ")) * 60
+        time_in_minutes = int(input("\tHow long ? > ")) * 60
 
-    input("Press key when ready.")
+    input("\tPress key when ready.")
 
     time_record.time_beginning = datetime.now()
     insert_record(db_name, time_record)
@@ -153,9 +180,9 @@ def set_record(db_name : str, old : bool = False) :
         tag_id = tag_input.get_tag_id_from_input(tag_repo, tag)
     time_record = TimeRecordInput(task_id=task_id, date=datetime.now(), tag_id=tag_id)
     if old:
-        time_record.date = input("Date? (YYYY-MM-DD) > ")
-        time_record.time_beginning = input("Beginning ? (HH:MM:SS) \n> ")
-        time_record.time_ending = input("Ending ? (HH:MM:SS) \n> ")
+        time_record.date = ask_date_input()
+        time_record.time_beginning = ask_time_input("beginning", time_record.date)
+        time_record.time_ending = ask_time_input("ending", time_record.date)
         time_record.log = enter_log()
     return time_record
 
@@ -189,11 +216,11 @@ def start_clock(
 def launch_pause(time_in_minutes: int | None, conf: Config):
     try:
         if not time_in_minutes :
-            time_in_minutes = int(input("How long ? > "))*60
+            time_in_minutes = int(input("\tHow long ? > "))*60
     except KeyboardInterrupt:
         raise KeyboardInterrupt
     start_clock("timer", time_beginning=datetime.now(), times_in_minutes=time_in_minutes)
-    print("Back at it!")
+    print("\tBack at it!")
     end_ring(conf)
 
 
@@ -201,19 +228,44 @@ def end_ring(conf : Config):
     playsound(conf.timer_sound_path)
 
 
-def enter_log() -> str:
+def enter_log() -> str | None:
     log = None
     
-    print("Enter your log :")
+    print("\tEnter your log :")
     while True:
-        piece = input("    > ")
+        piece = input("\t    > ")
 
-        if piece == "":
+        if not piece:
             return log
-        elif piece != "" and not log:
+        if piece and not log:
             log = piece
-        else:
-            log += f"  \n{piece}"        
+        elif piece and log:
+            log += f"  \n{piece}" 
 
-if __name__ == '__main__':
-    start()
+def ask_date_input() -> str:
+    while True:
+        val =  input("\tDate? (YYYY-MM-DD) \n\t> ")
+        try:
+            val_date = date.fromisoformat(val)
+            if val_date and val_date <= datetime.now().date():
+                return val
+            else:
+                print("\t    Date is in the future, not you.")
+        except ValueError:
+            print("\t    Invalid date.")
+
+
+def ask_time_input(bound : Literal["beginning", "ending"], date) -> str:
+    while True:
+        val = input(f"\t{bound.title()} time? (HH:MM:SS) \n\t> ")
+        try:
+            val_time = datetime.strptime(f"{date} {val}", '%Y-%m-%d %H:%M:%S')
+            if val_time and val_time <= datetime.now():
+                return val
+            print("\t    That's in the future.")
+        except ValueError:
+            print("\t    Invalid time.")
+
+        
+# if __name__ == '__main__':
+#     start()
