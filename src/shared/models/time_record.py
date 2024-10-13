@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, date, time
 from ulid import ULID
 import re
 
@@ -8,14 +8,14 @@ def new_ulid():
 
 @dataclass
 class TimeRecordInput():
-    task_id : str = None
-    date : datetime = None
-    time_beginning : datetime = None
-    time_ending : datetime = None
-    time_elapsed : int = None
-    tag_id : str = None
-    log : str = None
-    guid : str = field(default_factory=new_ulid)
+    task_id : int | None = None
+    date : datetime | str | None = None
+    time_beginning : datetime | str | None = None
+    time_ending : datetime | str | None = None
+    time_elapsed : int | None = None
+    tag_id : int | None = None
+    log : str | None = None
+    guid : str | None = field(default_factory=new_ulid)
 
     def __post_init__(self):
         if self.date and isinstance(self.date, str):
@@ -44,13 +44,13 @@ class TimeRecordInput():
 @dataclass
 class TimeRecordResource():
     guid : str = field(default_factory=new_ulid)
-    task_name : str = None
-    subtask : str = None
-    date : datetime = None
-    time_beginning : datetime = None
-    time_ending : datetime = None
-    tag : str = None
-    log : str = None
+    task_name : str | None = None
+    subtask : str | None = None
+    date : datetime | None = None
+    time_beginning : datetime | None = None
+    time_ending : datetime | None = None
+    tag : str | None = None
+    log : str | None = None
 
     def __post_init__(self):
         if self.date:
