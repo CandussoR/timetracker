@@ -1,23 +1,22 @@
 # Overview
 
-This app is a timer/clockwatch which keeps track of activity in a SQLite database.
+This app is a timer/clockwatch which keeps track of activity in a SQLite database and displays some stats.
 
-Enter a number according to the prompt depending on what you want to do. You can
-enter both a task and a subtask by separating them with a space or anything not
-alphanumeric.
+## Status
+Under development.
 
-The stats part of the app is still minimal and returns the activity of the day with
-their streak, and general stats with number of timers and total time for a day,
-a week or the year.
+## Future
+This repo is probably going to be divided between a standalone TUI repo and a back repo meant to be used with the [timetracker front](https://github.com/CandussoR/timetracker_front).
 
-# Install
+
+## Install
 - Clone the repo with :
   ```git@github.com:CandussoR/timer_sans_classe.git```
   - An error might occur if you haven't yet added any ssh key to Github.  
   If so, either clone with HTTPS with the command :  
-  ```https://github.com/CandussoR/timer_sans_classe.git```  
+  ```git clone https://github.com/CandussoR/timer_sans_classe.git```  
   or use [this Github tuto](https://docs.github.com/fr/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) to add an ssh key.  
-- The packages needed to run the script are located in the file `requirements.txt`.  
+- The packages needed to run the script are in the file `requirements.txt`.  
   You can either install them globally on your machine using `pip install -r requirements.txt`,  
   or create a virtual environment and install the packages needed in there.  
   - To create your [virtual environment](https://docs.python.org/3/library/venv.html), customize and run the command  

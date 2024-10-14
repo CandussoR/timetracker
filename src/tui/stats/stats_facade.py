@@ -15,40 +15,40 @@ def display_stats(connexion : Connection):
         if time is not None:
             task_streak = repo.max_and_current_streaks(task)
             max = "(max streak!)" if task_streak[0][1] == task_streak[0][0] else f"(max : {task_streak[0][0]})"
-            print(f"\t{task} : {format_time(time, 'hour')} ({ratio}%)")
+            print(f"\t    {task} : {format_time(time, 'hour')} ({ratio}%)")
             print(f"\t\tCurrent streak : {task_streak[0][1]} {max}")
 
-    print(f"\nThis year's average day : {repo.average_day_this_year()}")
+    print(f"\n\tThis year's average day : {repo.average_day_this_year()}")
 
     max_stat = repo.max_in_a_day()
-    print(f"\nYour maximum : {max_stat[1]} ({max_stat[0]}).")
+    print(f"\n\tYour maximum : {max_stat[1]} ({max_stat[0]}).")
 
     display_timer_count_and_time(repo, "week")
     display_timer_count_and_time(repo, "year")
  
-    more = input("\nSee every task max streak (y) ?\n\t>> ")
+    more = input("\n\tSee every task max streak (y) ?\n  \t>> ")
     if more == 'y':
         for task, streak, current_streak in repo.all_task_streaks():
             suffix = f'(current : {current_streak})' if current_streak != 1 else ''
             print(f"  Max streak for {task} : {streak} {suffix}")
 
 
-    weeks = input("See last weeks (y) ?\n\t>> ")
+    weeks = input("\tSee last weeks (y) ?\n  \t>> ")
     if weeks == 'y':
         number_of_weeks : int = int(input("\tHow many ?\n\t>> "))
         time_per_week = repo.past_weeks(number_of_weeks)
         for monday, sunday, tpw in time_per_week:
-            print(f"Week from Monday {monday} to Sunday {sunday} : \n\t Total time : {tpw}")
+            print(f"\tWeek from Monday {monday} to Sunday {sunday} : \n\t Total time : {tpw}")
 
 
 def display_timer_count_and_time(repo : SqliteStatRepository, period : Literal["today", "week", "year"]) :
     match(period):
         case "today":
-            range = "This day"
+            range = "\tThis day"
         case "week":
-            range = "This week"
+            range = "\tThis week"
         case "year":
-            range = "This year"
+            range = "\tThis year"
         case _:
             raise Exception("Wrong argument.")    
             
