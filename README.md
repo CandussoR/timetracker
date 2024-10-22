@@ -34,7 +34,7 @@ This repo is probably going to be divided between a standalone TUI repo and a ba
   ```pip install -r tui_requirements.txt```
 - If you prefer to use the API:
   ```pip install -r requirements.txt```
-- Modify the `.env.example` and rename it to `.env`
+- Modify the `conf_example.json` and rename it to `conf.json`
 - Launch the program with `python run.py <config/file/path>` for the TUI or `python run.py <config/file/path> --api` for the API.
 - If you want to launch it with a test environment, you can use `python run.py <testconfig/file/path> --test [--api]`
 - If you use the API, you can test things with POSTMAN (I didn't do the API doc yet though) or clone and follow the instructions given in the [timetracker front](https://github.com/CandussoR/timetracker_front).
