@@ -1,7 +1,7 @@
 {
   "database": "./timer_data.db",
   "remote_database": "",
-  "timer_sound_path": "./tui/assetstimer_end.mp3",
+  "timer_sound_path": "./tui/assets/timer_end.mp3",
   "flows": [
     { "Pomodoro": { "timers": [25, 25, 25, 25], "pauses": [5, 5, 5, 25] } }
   ]
