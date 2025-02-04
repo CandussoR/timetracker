@@ -125,7 +125,8 @@ def start(conf : Config, db_name : str):
                     print("\tCouldn't leave it huh ? Updated, boss.")
 
                 case "8":
-                    print("\tNot implemented. Logs, flows, etc. Probably only in GUI.")
+                    print("\tNot implemented.")
+                    print("\fIf you want to create a flow, you have to add it manually to your config file.")
 
                 case "9":
                     print("\tBye !")
@@ -133,7 +134,6 @@ def start(conf : Config, db_name : str):
                 case _:
                     print("\tInvalid input, enter a number between 1 and 9.")
         
-    # except (ValueError, KeyboardInterrupt):
     except (KeyboardInterrupt):
         print("\tBye!\n")
 
