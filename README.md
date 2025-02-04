@@ -37,9 +37,9 @@ This repo is probably going to be divided between a standalone TUI repo and a ba
 - Modify the `conf_example.jsonc` (don't forget to delete the comments or it won't be loaded) and rename it to `conf.json`
 - Launch the program with `python run.py <config/file/path>` for the TUI or `python run.py <config/file/path> --api` for the API.
 - If you want to launch it with a test config, you can use `python run.py <testconfig/file/path> --test [--api]
+> [!IMPORTANT]
+> Your test config filename must begin by 'test_'.
 
-  > [!IMPORTANT]
-  > Your test config filename must begin by 'test_'.
 - If you use the API, you can test things with POSTMAN (I didn't do the API doc yet though) or clone the front-end repo and follow the instructions given in the [timetracker front](https://github.com/CandussoR/timetracker_front).
 
 ## Command line : making it handier
