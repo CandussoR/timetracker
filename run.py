@@ -8,7 +8,7 @@ from src.web_api.factory import create_flask_app
 def create_app(args : list[str]):
     '''Args are : config file path, [--test], [--api].'''
 
-    conf_file = validate_conf_path(args[0], is_test=False)
+    conf_file = validate_conf_path(args[0], is_test='--test' in args)
     
     conf = Config(conf_file)
 

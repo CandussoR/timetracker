@@ -1,0 +1,14 @@
+{
+  /* path of your database, which is created if it doesn't exist. */
+  "database": "./timer_data.db",
+
+  /* path of the bell at the end of a clock, which you can change to another sound if you prefer */
+  "timer_sound_path": "./tui/assets/timer_end.mp3",
+
+  /* example flow for the command line interface,
+    not yet available with the GUI,
+    and must be added manually here for now */
+  "flows": [
+    { "Pomodoro": { "timers": [25, 25, 25, 25], "pauses": [5, 5, 5, 25] } }
+  ]
+}
