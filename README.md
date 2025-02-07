@@ -8,7 +8,7 @@ Under development.
 ## Features
 * Timer / Chrono :
   * Each can have a tag in addition to a pairing of task and subtask ;
-* Flows ;
+* Flows (TUI only);
 * Add a past timer / edit old ones ;
 * Daily, weekly, monthly and yearly generic statistics page ;
 * Time record retrieval by date, period or range, + tag, + task (and subtask).
