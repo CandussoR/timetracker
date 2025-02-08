@@ -123,18 +123,24 @@ class BaseStatService():
         return line
 
 
-    def create_apex_stacked_column_chart(self, ratios : list, labels : list, fill : int = 0):
+    def create_apex_stacked_column_chart(self, ratios : list, labels : list):
         '''
             Format data object for apexcharts StackedBar in front.
             The fill value should only be used if the labels refer to future dates to cover the dates not yet present in the database.
         '''
+        # (num_week, task_name, time_per_task, time_per_week, ratio)
         # Makes a list of the set of tasks so we can get an index
         tasks = list({t for _,t,_,_,_ in ratios})
         # Creating an object with values prefilled for each day of the week
-        stacked = [{"name" : t, "data" : [0] * (len(labels) + fill)} for t in tasks]
+        stacked = [{"name" : t, "data" : [0] * len(labels)} for t in tasks]
 
+        print("do we have tasks and stacked", tasks, stacked)
         for date, task, _, _, ratio in ratios:
-            stacked[tasks.index(task)]["data"][labels.index(date)] = ratio
+            try:
+                stacked[tasks.index(task)]["data"][labels.index(date)] = ratio
+            except Exception as e:
+                print("Exception", e)
+        print("and after ?", stacked)
 
         return stacked
 
@@ -198,7 +204,7 @@ class WeekStatService(BaseStatService):
 
         # 1.2. Get task_time_ratio for every day of the week.
         ratios = self.repo.get_task_time_per_day_between(start_of_week, end_of_week)
-        stacked = super().create_apex_stacked_column_chart(ratios, days_in_week, len_fill)
+        stacked = super().create_apex_stacked_column_chart(ratios, days_in_week)
 
         # 2. Total time per day of the week
         days_line_chart = super().create_apex_line_chart_object(time_per_day, len_fill)
@@ -257,8 +263,9 @@ class MonthStatService(BaseStatService):
         len_fill = len(weeks) - len(week_times)
 
         # Graph stacked column chart
+        # Ratios : (num_week, task_name, time_per_task, time_per_week, ratio)
         ratios = self.repo.get_task_time_per_week_in_month(month)
-        stacked = super().create_apex_stacked_column_chart(ratios, weeks, len_fill)
+        stacked = super().create_apex_stacked_column_chart(ratios, weeks)
 
         # Total time per week of the month
         week_line_chart = super().create_apex_line_chart_object(week_times, len_fill)
@@ -296,9 +303,9 @@ class YearStatService(BaseStatService):
         months = self.get_column_dates(year)
         dates = list(map(lambda x : datetime.strptime(x, '%Y-%m'), [months[0], months[-1]]))
         time_per_month = self.repo.total_time_per_month_in_range(*dates)
-        len_fill = 12 - len(time_per_month)
+        len_fill= 12 - len(time_per_month)
 
-        stacked = super().create_apex_stacked_column_chart(ratios, months, len_fill)
+        stacked = super().create_apex_stacked_column_chart(ratios, months)
 
         # # 2. Total time per month of year
         line = super().create_apex_line_chart_object(time_per_month, len_fill)
@@ -310,7 +317,7 @@ class YearStatService(BaseStatService):
 
 
     def get_column_dates(self, date : datetime):
-        return [f"{date.year}-{month:02d}" for month in range(1, datetime.now().month+1)]
+        return [f"{date.year}-{month:02d}" for month in range(1, 13)]
 
     def get_week_total_time_per_week_for_years(self, years : list[datetime]):
         '''
