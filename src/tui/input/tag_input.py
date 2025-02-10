@@ -1,3 +1,4 @@
+import re
 from src.shared.models.tag import Tag
 from src.shared.repositories.tag_repository import SqliteTagRepository
 
@@ -6,7 +7,10 @@ def ask_input() -> str:
     while True:
         try:
             tag_input = input("\tEnter a tag. > ")
-            if int(tag_input):
+            if re.search(r'\s', tag_input):
+                print("\tTag cannot contain whitespace.")
+            # will raise ValueError if not int.
+            elif int(tag_input):
                 print("\tTag must be a string.")
         except ValueError :
             return tag_input.strip()

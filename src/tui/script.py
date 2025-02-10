@@ -174,7 +174,8 @@ def set_record(db_name : str, old : bool = False) :
     task_repo = task_repository.SqliteTaskRepository(connexion=connexion)
     tag_id = None
     task = task_input.task_string_input()
-    task_id = task_input.get_task_rank_from_input(task_repo, task)
+    subtask = task_input.task_string_input(subtask=True)
+    task_id = task_input.get_task_rank_from_input(task_repo, f"{task} {subtask}")
     tag = tag_input.ask_input()
     if tag:
         tag_id = tag_input.get_tag_id_from_input(tag_repo, tag)

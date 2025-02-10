@@ -24,11 +24,15 @@ def get_task_rank_from_input(repository : SqliteTaskRepository, task_input : str
                 print("\tEnter Y for yes or N for no.")
         
 
-def task_string_input() -> str:
+def task_string_input(subtask : bool = False) -> str:
+    t_or_st = "task" if not subtask else "subtask"
     while True:
         try:
-            task_input = input("\tEnter a task. > ")
-            if int(task_input):
+            task_input = input(f"\tEnter a {t_or_st}. > ")
+            if re.search(r'\s', task_input):
+                print(f"{t_or_st.title()} cannot contain whitespace.")
+            # raises ValueError if not int
+            elif int(task_input):
                 print("\tTask name must be a string.")
         except ValueError :
             return task_input
