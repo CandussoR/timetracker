@@ -147,7 +147,7 @@ def launch_clock_facade(
     if duration:
         time_in_minutes = duration
     elif (not duration) and clock == "timer":
-        time_in_minutes = int(input("\tHow long ? > ")) * 60
+        time_in_minutes = int(input("\tHow long (in minutes) ? > ")) * 60
 
     input("\tPress key when ready.")
 
