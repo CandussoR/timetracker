@@ -3,6 +3,7 @@ from sqlite3 import IntegrityError
 from flask import Blueprint, request
 from marshmallow import ValidationError
 
+from src.shared.exceptions.unique_constraint import UniqueConstraintError
 from src.web_api.services.task_service import TaskService
 
 tasks_blueprint = Blueprint("tasks", __name__)
@@ -24,6 +25,8 @@ def create_task():
         return task, 200
     except ValidationError as e:
         return str(e), 400
+    except UniqueConstraintError as e:
+        return str(e), 422
     except Exception as e:
         return str(e), 500
 

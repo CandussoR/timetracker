@@ -2,6 +2,7 @@ from sqlite3 import IntegrityError
 from flask import Blueprint, request
 from marshmallow import ValidationError
 
+from src.shared.exceptions.unique_constraint import UniqueConstraintError
 from src.web_api.services.tag_service import TagService
 
 
@@ -36,6 +37,8 @@ def create_tag():
         return tag
     except ValidationError as e:
         return str(e), 400
+    except UniqueConstraintError as e:
+        return str(e), 422
     except Exception as e :
         return str(e), 500
 

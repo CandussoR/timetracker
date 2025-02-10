@@ -1,4 +1,6 @@
+import sqlite3
 from flask import g
+from src.shared.exceptions.unique_constraint import UniqueConstraintError
 from src.shared.models.tag import Tag
 from src.shared.repositories.tag_repository import SqliteTagRepository
 from src.web_api.schemas.tag_schema import TagSchema
@@ -6,8 +8,8 @@ from src.web_api.schemas.task_schema import UlidSchema
 
 
 class TagService():
-    def __init__(self) :
-        self.connexion = g._database
+    def __init__(self, conn : sqlite3.Connection | None = None) :
+        self.connexion = conn if conn else g._database 
         self.repo = SqliteTagRepository(self.connexion)
 
 
@@ -28,9 +30,12 @@ class TagService():
     def new(self, data : dict):
         TagSchema().load(data)
         tag = Tag().from_dict(data)
-        created = self.repo.create(tag)
-        self.connexion.commit()
-        return TagSchema().dump(Tag(*created))
+        try:
+            created = self.repo.create(tag)
+            self.connexion.commit()
+            return TagSchema().dump(Tag(*created))
+        except sqlite3.IntegrityError:
+            raise UniqueConstraintError("This tag already exists.")
     
 
     def update(self, data : dict):
