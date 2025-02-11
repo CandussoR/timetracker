@@ -6,22 +6,21 @@ from src.shared.repositories.task_repository import SqliteTaskRepository
 
 def get_task_rank_from_input(repository : SqliteTaskRepository, task_input : str):
     while True :
-        try:
-            task = parse_input(task_input)
-            # Sends TypeError if None.
-            return repository.fetch_task_id(task)
-        except TypeError:
-            add_task = input("\tThe task doesn't exist. Do you want to add it ? (Y/N) > ")
-            
-            if add_task.upper().strip() == "Y":
-                _,_,guid = repository.insert_new_task(task)
-                repository.connexion.commit()
-                return repository.get_id_from_guid(guid)
-            elif add_task.upper().strip() == "N":
-                task_input = input("\tEnter the task name again : > ")
-                continue
-            else :
-                print("\tEnter Y for yes or N for no.")
+        task = parse_input(task_input)
+        if task_id := repository.fetch_task_id(task):
+            return task_id
+        
+        add_task = input("\tThe task doesn't exist. Do you want to add it ? (Y/N) > ")
+        
+        if add_task.upper().strip() == "Y":
+            _,_,guid = repository.insert_new_task(task)
+            repository.connexion.commit()
+            return repository.get_id_from_guid(guid)
+        elif add_task.upper().strip() == "N":
+            task_input = input("\tEnter the task name again : > ")
+            continue
+        else :
+            print("\tEnter Y for yes or N for no.")
         
 
 def task_string_input(subtask : bool = False) -> str:
