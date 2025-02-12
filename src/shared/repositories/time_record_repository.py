@@ -39,9 +39,9 @@ class SqliteTimeRecordRepository():
         elif set(["rangeBeginning", "rangeEnding"]).issubset(keys):
             parameters.append("date BETWEEN date(:rangeBeginning) AND date(:rangeEnding)")
         elif "year" in keys :
-            parameters.append(f"strftime('%Y', date) = strftime('%Y', date(:year))")
+            parameters.append(f"strftime('%Y', date) = :year")
         elif "month" in keys:
-            parameters.append(f"strftime('%Y-%m', date) = strftime('%Y-%m', date(:month))")
+            parameters.append(f"strftime('%Y-%m', date) = :month")
 
         if "task" in keys and not "subtask" in keys:
             parameters.append("tasks.task_name = (:task)")
@@ -63,6 +63,8 @@ class SqliteTimeRecordRepository():
                    JOIN tasks ON tasks.id = td.task_id
                    LEFT JOIN tags ON tags.id = td.tag_id
                    WHERE {' AND '.join(parameters)}'''
+        
+        print(query)
         return self.connexion.execute(query, conditions).fetchall()
 
     def insert_beginning(self, record: TimeRecordInput) -> int:
