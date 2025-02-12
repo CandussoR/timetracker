@@ -33,6 +33,10 @@ CREATE_TIMER_TABLE = """
     FOREIGN KEY (tag_id)
         REFERENCES tags (id)
         );
+
+    CREATE INDEX IF NOT EXISTS idx_date_timer ON timer_data (date);
+    CREATE INDEX IF NOT EXISTS idx_task_id_timer ON timer_data (task_id);
+    CREATE INDEX IF NOT EXISTS idx_tag_id_timer ON timer_data (tag_id);
     """
 
 # CREATE_TEMP_TASK_TABLE = """
@@ -82,7 +86,7 @@ def create_tables(connexion):
     with connexion:
         connexion.execute(CREATE_TASK_TABLE)
         connexion.execute(CREATE_TAGS_TABLE)
-        connexion.execute(CREATE_TIMER_TABLE)
+        connexion.executescript(CREATE_TIMER_TABLE)
 
         # connexion.execute(CREATE_TEMP_TASK_TABLE)
         # connexion.execute(CREATE_TEMP_TAGS_TABLE)
