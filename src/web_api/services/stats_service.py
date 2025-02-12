@@ -134,13 +134,11 @@ class BaseStatService():
         # Creating an object with values prefilled for each day of the week
         stacked = [{"name" : t, "data" : [0] * len(labels)} for t in tasks]
 
-        print("do we have tasks and stacked", tasks, stacked)
         for date, task, _, _, ratio in ratios:
             try:
                 stacked[tasks.index(task)]["data"][labels.index(date)] = ratio
             except Exception as e:
                 print("Exception", e)
-        print("and after ?", stacked)
 
         return stacked
 
@@ -203,7 +201,7 @@ class WeekStatService(BaseStatService):
         len_fill = 7 - len(time_per_day)
 
         # 1.2. Get task_time_ratio for every day of the week.
-        ratios = self.repo.get_task_time_per_day_between(start_of_week, end_of_week)
+        ratios = self.repo.get_task_time_per_day_between(days_in_week[0], days_in_week[-1])
         stacked = super().create_apex_stacked_column_chart(ratios, days_in_week)
 
         # 2. Total time per day of the week
@@ -245,7 +243,7 @@ class MonthStatService(BaseStatService):
         return super().get_task_time_ratio(range)
 
 
-    def get_generic_stat(self, month : Optional[datetime | str] = None) -> dict:
+    def get_generic_stat(self, datestring : Optional[str] = None) -> dict:
         '''
             Gets a datetime object "YYYY-MM-DD" and returns a dict with :
             `weeks` : the week numbers of the month,
@@ -253,31 +251,50 @@ class MonthStatService(BaseStatService):
             `weeksLineChart` : date formated for Apex Charts Line Chart.
         '''
         # Get task_time_ratio for every day of the week.
-        if isinstance(month, str):
-            month = datetime.strptime(month, '%Y-%m')
-        if not month :
-            month = datetime.now().replace(day=1)
+        # if isinstance(month, str):
+        #     month = datetime.strptime(month, '%Y-%m')
+        if not datestring :
+            beginning_dt = datetime.now().replace(day=1)
+        datestring = beginning_dt.strftime('%Y-%m-%d')
+        year,month,_ = datestring.split('-')
+        next_month = f"{year}-{int(month)+1:02d}-01"
 
-        weeks = self.get_column_dates(month)
-        week_times = self.repo.total_time_per_week_in_range([str(month.year)], weeks[0], weeks[-1])
-        len_fill = len(weeks) - len(week_times)
+        # Does not feel robust at all
+        week_column_labels = self.get_column_dates(datestring)
+        week_times = self.repo.total_time_per_week_in_range(datestring, next_month)
+        label_and_time = []
+        for i in range(len(week_column_labels)):
+            if i < len(week_times):
+                label_and_time.append((week_column_labels[i], week_times[i][0]))
+            else:
+                break
+        len_fill = len(week_column_labels) - len(week_times)
 
         # Graph stacked column chart
         # Ratios : (num_week, task_name, time_per_task, time_per_week, ratio)
-        ratios = self.repo.get_task_time_per_week_in_month(month)
-        stacked = super().create_apex_stacked_column_chart(ratios, weeks)
+        ratios = []
+        for w in week_column_labels:
+            first, last = list(map(lambda x : x.strftime('%Y-%m-%d'), self.get_start_and_end_date_from_calendar_week(year, w)))
+            t = self.repo.get_task_time_ratio_for_week_between(first, last)
+            for task in t:
+                ratios.append((w, *task))
+        stacked = super().create_apex_stacked_column_chart(ratios, week_column_labels)
 
         # Total time per week of the month
-        week_line_chart = super().create_apex_line_chart_object(week_times, len_fill)
+        week_line_chart = super().create_apex_line_chart_object(label_and_time, len_fill)
+        return {"weeks" : week_column_labels, "stackedBarChart" : stacked, "weeksLineChart": week_line_chart }
 
-        return {"weeks" : weeks, "stackedBarChart" : stacked, "weeksLineChart": week_line_chart }
 
-
-    def get_column_dates(self, date : datetime):
-        _, first_week_of_month, _ = date.isocalendar()
-        _,last_day = calendar.monthrange(date.year, date.month)
-        _, last_week, _ = datetime(date.year, date.month, last_day).isocalendar()
-        return [f'{week:02d}' for week in range(first_week_of_month, last_week+1)]
+    def get_column_dates(self, datestring : str):
+        a_date = datetime.strptime(datestring, '%Y-%m-%d')
+        first_week = int(a_date.replace(day=1).strftime('%W'))
+        _,last_day = calendar.monthrange(a_date.year, a_date.month)
+        _, last_week, _ = datetime(a_date.year, a_date.month, last_day).isocalendar()
+        return [f'{week:02d}' for week in range(first_week, last_week+1)]
+    
+    def get_start_and_end_date_from_calendar_week(self, year, calendar_week):       
+        monday = datetime.strptime(f'{year}-{calendar_week}-1', "%Y-%W-%w").date()
+        return monday, monday + timedelta(days=6.9)
 
 
 class YearStatService(BaseStatService):
@@ -294,15 +311,14 @@ class YearStatService(BaseStatService):
         return super().get_task_time_ratio(range)
 
 
-    def get_generic_stat(self, year : Optional[datetime] = None) :
+    def get_generic_stat(self, year : Optional[str] = None) :
         # 1.2. Get task_time_ratio for every month of year.
         if year is None:
-            year = datetime.now()
+            year = datetime.now().strftime('%Y')
 
         ratios = self.repo.get_task_time_per_month_in_year(year)
         months = self.get_column_dates(year)
-        dates = list(map(lambda x : datetime.strptime(x, '%Y-%m'), [months[0], months[-1]]))
-        time_per_month = self.repo.total_time_per_month_in_range(*dates)
+        time_per_month = self.repo.total_time_per_month_in_range(f'{year}-01-01', f'{year}-12-31')
         len_fill= 12 - len(time_per_month)
 
         stacked = super().create_apex_stacked_column_chart(ratios, months)
@@ -315,11 +331,10 @@ class YearStatService(BaseStatService):
                 "monthsLineChart": line,
                 "weekLineChart": self.get_week_total_time_per_week_for_years([year])}
 
+    def get_column_dates(self, year : str):
+        return [f"{year}-{month:02d}" for month in range(1, 13)]
 
-    def get_column_dates(self, date : datetime):
-        return [f"{date.year}-{month:02d}" for month in range(1, 13)]
-
-    def get_week_total_time_per_week_for_years(self, years : list[datetime]):
+    def get_week_total_time_per_week_for_years(self, years : list[str]):
         '''
             Used to fill a year of week times in a bar chart in the front.
         '''
