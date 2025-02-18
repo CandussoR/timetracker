@@ -160,8 +160,8 @@ class DayStatService(BaseStatService):
         return super().get_task_time_ratio(range)
 
 
-    def get_generic_stat(self) :
-        raise NotImplementedError("This function does not exist for this period.")
+    def get_generic_stat(self, a_date : str) -> list[dict]:
+        return self.get_task_time_ratio([a_date])
 
 
 class WeekStatService(BaseStatService):
@@ -250,13 +250,13 @@ class MonthStatService(BaseStatService):
             `stackedBarChart` : data formated for Apex Charts Stacked Bar Chart,
             `weeksLineChart` : date formated for Apex Charts Line Chart.
         '''
-        # Get task_time_ratio for every day of the week.
-        # if isinstance(month, str):
-        #     month = datetime.strptime(month, '%Y-%m')
+        # TODO : Must find a more robust solution
         if not datestring :
             beginning_dt = datetime.now().replace(day=1)
-        datestring = beginning_dt.strftime('%Y-%m-%d')
-        year,month,_ = datestring.split('-')
+            datestring = beginning_dt.strftime('%Y-%m-%d')
+        elif len(datestring.split('-')) == 2:
+            datestring = f"{datestring}-01"
+        year,month,*_ = datestring.split('-')
         next_month = f"{year}-{int(month)+1:02d}-01"
 
         # Does not feel robust at all
@@ -351,11 +351,12 @@ class YearStatService(BaseStatService):
             raise Exception(e) from e
 
 
-class CustomStatService(BaseStatService):
+class CustomStatService():
     def __init__(self, connexion : Connection, request : dict):
-        super().__init__(connexion, request)
+        self.connexion = connexion
+        self.request = request
         assert self.request != None
-        self.logs = self.request["logs"]
+        self.logs = self.request["logs"] if "logs" in self.request else False
 
     def generate_labels(self, period, date_range : list[datetime]):
         if len(date_range) == 1 : return [date_range[0].strftime('%Y-%m-%d')]
@@ -388,6 +389,23 @@ class CustomStatService(BaseStatService):
             raise ValueError("Invalid period provided. Please choose from 'day', 'week', 'month', or 'year'.")
 
         return labels
+    
+
+    def get_generic_stats(self) -> dict:
+        '''
+        Returns generic stats for a period based on a date string.
+        '''
+        if "day" in self.request:
+            return DayStatService(self.connexion, self.request).get_generic_stat(self.request["day"])
+        if "week" in self.request:
+            return WeekStatService(self.connexion, None).get_generic_stat(self.request["week"][0])
+        if "month" in self.request:
+            return MonthStatService(self.connexion, None).get_generic_stat(self.request["month"])
+        if "year" in self.request:
+            return YearStatService(self.connexion, self.request).get_generic_stat(str(self.request["year"]))
+        else:
+            return {}
+
 
     def get_custom_stats(self) -> dict:
         '''
@@ -400,7 +418,10 @@ class CustomStatService(BaseStatService):
 
         keys = self.request.keys()
 
-        if "rangeBeginning" and not "stats" in keys :
+        if len(keys) == 1 or (len(keys) == 2 and "logs" in keys):
+            return self.get_generic_stats()
+        
+        if "rangeBeginning" in keys and not "stats" in keys :
             raise KeyError("Range must have a list of stat elements to return.")
         
         
@@ -483,9 +504,8 @@ class StatServiceFactory():
     def create_stat_service(connexion: Optional[Connection] = None, request: Optional[ImmutableMultiDict] = None):
         connexion = g._database if connexion is None else connexion
         if request is None: return BaseStatService(connexion)
-        request_dict = convert_to_custom_dict(request)
         init_attributes = {"connexion" : connexion, "request": request}
-        return StatServiceFactory.create_stat_object(request_dict, init_attributes) 
+        return StatServiceFactory.create_stat_object(request, init_attributes) 
 
     @staticmethod
     def create_stat_object(request_dict: dict, init_attributes: dict) -> BaseStatService|DayStatService|WeekStatService|MonthStatService|YearStatService:
