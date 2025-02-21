@@ -344,28 +344,6 @@ class SqliteStatRepository():
         return self.connexion.execute(query, [start,end]).fetchall()
 
 
-    def get_task_time_ratio_for_week_between(self, monday : str, sunday : str) -> list[tuple]:
-        '''This retrieves the task_ratio for one week only.
-            Returns [ (task, task_time, week_time, ratio).
-        '''
-        print(monday, sunday)
-        query= f'''
-            WITH sub AS (
-                SELECT date, 
-                task_name, 
-                SUM(time_elapsed) OVER (PARTITION BY task_name) as total_time_task, 
-                SUM(time_elapsed) OVER () as total_time_week 
-                FROM timer_data 
-                JOIN tasks ON timer_data.task_id = tasks.id 
-                WHERE date BETWEEN ? AND ?) 
-            SELECT DISTINCT(task_name), 
-                total_time_task, 
-                total_time_week, 
-                ROUND((total_time_task/total_time_week)*100,1) as ratio 
-            FROM sub;
-            '''
-        return self.connexion.execute(query, [monday, sunday]).fetchall()
-
     def total_time_per_week_for_years(self, years : Optional[list[str]] = None) -> list[tuple[str, str, float]]:
         '''
            Used for the BarChart in the year stats in the front. Returns only full weeks.
@@ -432,6 +410,78 @@ class SqliteStatRepository():
                 """
         return self.connexion.execute(query).fetchall()
     
+    
+    def get_task_time_ratio_by_week_between(self, begin : str, end : str, include_partial : bool = True):
+        '''
+            Returns a list of tuples (num_week_group, task_name, total time of task, total time of week, ratio).  
+        '''
+        query = f'''WITH RECURSIVE dates(d, weekday) AS ( 
+            SELECT ?, strftime('%w', ?) 
+            UNION ALL 
+            SELECT DATE(d, '+1 day'), strftime('%w', date(d, '+1 day'))
+            FROM dates 
+            WHERE d < DATE(?, '-1 day')
+            ), 
+            weeks AS (
+            SELECT *, 
+                SUM(CASE WHEN weekday = '1' THEN 1 ELSE 0 END) OVER (ORDER BY dates.d) as week_group 
+                FROM dates
+            ),
+            counted_weeks AS (
+                SELECT *, COUNT(*) OVER (PARTITION BY week_group) as days_in_week 
+                FROM weeks
+            ),
+            total_time_week AS (
+                SELECT week_group, 
+                    SUM(COALESCE(time_elapsed, 0)) AS total_time_week 
+                FROM weeks 
+                JOIN timer_data ON weeks.d = timer_data.date 
+                { 'WHERE cw.days_in_week = 7' if not include_partial else '' }
+                GROUP BY week_group
+            ), time_task_week AS (
+                SELECT cw.d, week_group, task_name, COALESCE(time_elapsed, 0) AS time_elapsed, SUM(COALESCE(time_elapsed, 0)) OVER (PARTITION BY week_group, task_name) as total_time_task_week
+                FROM counted_weeks cw 
+                LEFT JOIN timer_data td ON td.date = cw.d 
+                LEFT JOIN tasks ON td.task_id = tasks.id 
+                WHERE task_name IS NOT NULL
+            ) 
+            SELECT ttt.week_group, ttt.task_name, ttt.total_time_task_week, total_time_week, ROUND((total_time_task_week/total_time_week)*100, 1) as ratio 
+            FROM time_task_week ttt
+            JOIN total_time_week ON total_time_week.week_group = ttt.week_group 
+            GROUP BY ttt.week_group, task_name
+            ORDER BY ttt.week_group;
+        '''
+        return self.connexion.execute(query, [begin, begin, end]).fetchall()
+        
+        
+    def get_total_week_time_between(self, begin : str, end : str, include_partial : bool = True):
+        '''
+            Returns a list of tuple (week_group, total_time).
+        '''
+        query = f'''WITH RECURSIVE dates(d, weekday) AS ( 
+            SELECT ?, strftime('%w', ?) 
+            UNION ALL 
+            SELECT DATE(d, '+1 day'), strftime('%w', date(d, '+1 day'))
+            FROM dates 
+            WHERE d < DATE(?, '-1 day')
+            ), 
+            weeks AS (
+            SELECT *, 
+                SUM(CASE WHEN weekday = '1' THEN 1 ELSE 0 END) OVER (ORDER BY dates.d) as week_group 
+                FROM dates
+            ),
+            counted_weeks AS (
+                SELECT *, COUNT(*) OVER (PARTITION BY week_group) as days_in_week 
+                FROM weeks
+            )
+            SELECT week_group,
+                SUM(COALESCE(time_elapsed, 0)) AS total_time_week 
+            FROM counted_weeks cw
+            LEFT JOIN timer_data ON cw.d = timer_data.date 
+            { 'WHERE cw.days_in_week = 7' if not include_partial else '' }
+            GROUP BY week_group;'''
+        return self.connexion.execute(query, [begin, begin, end]).fetchall()
+
 
     def get_task_time_per_month_in_year(self, year : str):
         '''

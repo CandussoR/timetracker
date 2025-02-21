@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from sqlite3 import Connection
 from typing import Optional
 from flask import g
@@ -33,6 +32,7 @@ class BaseStatService():
             "monthly" : MonthStatService(self.connexion).get_home_stat(),
             "yearly" : YearStatService(self.connexion).get_home_stat()
         }
+
 
     def get_period_and_dates(self, request : dict) -> tuple[str, list[datetime]] :
 
@@ -135,10 +135,7 @@ class BaseStatService():
         stacked = [{"name" : t, "data" : [0] * len(labels)} for t in tasks]
 
         for date, task, _, _, ratio in ratios:
-            try:
-                stacked[tasks.index(task)]["data"][labels.index(date)] = ratio
-            except Exception as e:
-                print("Exception", e)
+            stacked[tasks.index(task)]["data"][labels.index(date)] = ratio
 
         return stacked
 
@@ -148,7 +145,6 @@ class DayStatService(BaseStatService):
         super().__init__(connexion, request)
 
     def get_home_stat(self):
-        print("getting home stats from DayStatService")
         return  {
                 "count": self.repo.timer_count("today"),
                 "time" : format_time(self.repo.total_time("today") or 0, "hour", split=True),
@@ -251,6 +247,7 @@ class MonthStatService(BaseStatService):
             `weeksLineChart` : date formated for Apex Charts Line Chart.
         '''
         # TODO : Must find a more robust solution
+        original_datestring = datestring
         if not datestring :
             beginning_dt = datetime.now().replace(day=1)
             datestring = beginning_dt.strftime('%Y-%m-%d')
@@ -259,39 +256,36 @@ class MonthStatService(BaseStatService):
         year,month,*_ = datestring.split('-')
         next_month = f"{year}-{int(month)+1:02d}-01"
 
-        # Does not feel robust at all
         week_column_labels = self.get_column_dates(datestring)
-        week_times = self.repo.total_time_per_week_in_range(datestring, next_month)
+        week_tasks_time = self.repo.get_task_time_ratio_by_week_between(datestring, next_month)
+
         label_and_time = []
-        for i in range(len(week_column_labels)):
-            if i < len(week_times):
-                label_and_time.append((week_column_labels[i], week_times[i][0]))
-            else:
-                break
-        len_fill = len(week_column_labels) - len(week_times)
+        for i, *_ in week_tasks_time:
+            label_and_time.append((week_column_labels[i], *_))
 
         # Graph stacked column chart
-        # Ratios : (num_week, task_name, time_per_task, time_per_week, ratio)
-        ratios = []
-        for w in week_column_labels:
-            first, last = list(map(lambda x : x.strftime('%Y-%m-%d'), self.get_start_and_end_date_from_calendar_week(year, w)))
-            t = self.repo.get_task_time_ratio_for_week_between(first, last)
-            for task in t:
-                ratios.append((w, *task))
-        stacked = super().create_apex_stacked_column_chart(ratios, week_column_labels)
+        stacked = super().create_apex_stacked_column_chart(label_and_time, week_column_labels)
 
         # Total time per week of the month
-        week_line_chart = super().create_apex_line_chart_object(label_and_time, len_fill)
+        if not original_datestring:
+            week_times = self.repo.get_total_week_time_between(datestring, datetime.now().strftime('%Y-%m-%d'))
+        else :
+            week_times = self.repo.get_total_week_time_between(datestring, next_month)
+
+        len_fill = len(week_column_labels) - len(week_times)
+
+        week_line_chart = super().create_apex_line_chart_object(week_times, len_fill)
         return {"weeks" : week_column_labels, "stackedBarChart" : stacked, "weeksLineChart": week_line_chart }
 
 
     def get_column_dates(self, datestring : str):
         a_date = datetime.strptime(datestring, '%Y-%m-%d')
-        first_week = int(a_date.replace(day=1).strftime('%W'))
         _,last_day = calendar.monthrange(a_date.year, a_date.month)
+        _, first_week, _ = datetime(a_date.year, a_date.month, 1).isocalendar()
         _, last_week, _ = datetime(a_date.year, a_date.month, last_day).isocalendar()
         return [f'{week:02d}' for week in range(first_week, last_week+1)]
     
+
     def get_start_and_end_date_from_calendar_week(self, year, calendar_week):       
         monday = datetime.strptime(f'{year}-{calendar_week}-1', "%Y-%W-%w").date()
         return monday, monday + timedelta(days=6.9)
@@ -301,11 +295,13 @@ class YearStatService(BaseStatService):
     def __init__(self, connexion : Optional[Connection], request: Optional[ImmutableMultiDict] = None):
         super().__init__(connexion, request)
 
+
     def get_home_stat(self):
         return {
                     "count": self.repo.timer_count("year"),
                     "time" : format_time(self.repo.total_time("year") or 0, "day", split=True)
                 }
+
 
     def get_task_time_ratio(self, range : list[datetime]):
         return super().get_task_time_ratio(range)
@@ -331,8 +327,10 @@ class YearStatService(BaseStatService):
                 "monthsLineChart": line,
                 "weekLineChart": self.get_week_total_time_per_week_for_years([year])}
 
+
     def get_column_dates(self, year : str):
         return [f"{year}-{month:02d}" for month in range(1, 13)]
+
 
     def get_week_total_time_per_week_for_years(self, years : list[str]):
         '''
@@ -357,6 +355,7 @@ class CustomStatService():
         self.request = request
         assert self.request != None
         self.logs = self.request["logs"] if "logs" in self.request else False
+
 
     def generate_labels(self, period, date_range : list[datetime]):
         if len(date_range) == 1 : return [date_range[0].strftime('%Y-%m-%d')]
@@ -477,23 +476,23 @@ class CustomStatService():
         return response_object
     
 
-    def _get_time_strategy(self, for_period : str, dates : list[datetime]) -> list:
-        #TODO : finish to refactor the different methods into one big.
-        assert self.request
+    # def _get_time_strategy(self, for_period : str, dates : list[datetime]) -> list:
+    #     #TODO : finish to refactor the different methods into one big.
+    #     assert self.request
 
-        match(for_period):
-            case "day":
-                return self.repo.total_time_per_day_in_range(self.request)
-            case("week"):
-                years = list(map(lambda x : str(x.year), dates))
-                weeks = list(map(lambda x : f'{x.isocalendar()[1]:02d}', dates))
-                return self.repo.total_time_per_week_in_range(years, weeks[0], weeks[1])
-            case("month"):
-                return self.repo.total_time_per_month_in_range(*dates)
-            case("year"):
-                return self.repo.total_time_per_year_in_range(dates)
-            case _:
-                raise ValueError("Wrong period for stats : ", for_period)
+    #     match(for_period):
+    #         case "day":
+    #             return self.repo.total_time_per_day_in_range(self.request)
+    #         case("week"):
+    #             years = list(map(lambda x : str(x.year), dates))
+    #             weeks = list(map(lambda x : f'{x.isocalendar()[1]:02d}', dates))
+    #             return self.repo.total_time_per_week_in_range(years, weeks[0], weeks[1])
+    #         case("month"):
+    #             return self.repo.total_time_per_month_in_range(*dates)
+    #         case("year"):
+    #             return self.repo.total_time_per_year_in_range(dates)
+    #         case _:
+    #             raise ValueError("Wrong period for stats : ", for_period)
 
 
 class StatServiceFactory():
