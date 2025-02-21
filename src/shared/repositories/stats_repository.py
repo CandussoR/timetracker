@@ -344,42 +344,41 @@ class SqliteStatRepository():
         return self.connexion.execute(query, [start,end]).fetchall()
 
 
-    def total_time_per_week_for_years(self, years : Optional[list[str]] = None) -> list[tuple[str, str, float]]:
+    def total_time_per_week_for_year(self, year : Optional[str] = None, include_partial : bool = True) -> list[tuple[str, str, float]]:
         '''
-           Used for the BarChart in the year stats in the front. Returns only full weeks.
+           Used for the BarChart in the year stats in the front.
            Potentially takes a list of years and returns an array of (year, week, week_start, week_end, total_time).
         '''
-
         # If no year, get the first and the last timer to use as beginning and end.
-        if not years:
-            calendar_beginning, calendar_ending = self.connexion.execute("SELECT MIN(date), MAX(date) FROM timer_data").fetchone()
-        else:
-            calendar_beginning = f'{years[0]}-01-01'
-            calendar_ending = f'{years[-1]}-12-31'
-        query = f"""
-                    WITH RECURSIVE dates(year, week, day, date) AS (
-                        VALUES(
-                                strftime('%Y', '{calendar_beginning}'),
-                                strftime('%W', '{calendar_beginning}'),
-                                strftime('%w', '{calendar_beginning}'),
-                                '{calendar_beginning}'
-                            )
-                        UNION ALL
-                        SELECT strftime('%Y', DATE(date, '+1 day')),
-                            strftime('%W', DATE(date, '+1 day')),
-                            strftime('%w', DATE(date, '+1 day')),
-                            DATE(date, '+1 day')
+        if not year:
+            year = self.connexion.execute("SELECT strftime('%Y', date('now'))").fetchone()[0]
+        calendar_beginning = f'{year}-01-01'
+        calendar_ending = f'{year}-12-31'
+        first_week_zero = self.connexion.execute("SELECT strftime('%W', ?);", (calendar_beginning,)).fetchone()[0] == '00'
+
+        query = f"""WITH RECURSIVE dates(year, day, date) AS ( 
+                    SELECT strftime('%Y', '{calendar_beginning}'), 
+                        strftime('%w', '{calendar_beginning}'), 
+                        '{calendar_beginning}' 
+                    UNION ALL 
+                    SELECT strftime('%Y', date(date, '+1 day')), 
+                        strftime('%w', date(date, '+1 day')), 
+                        DATE(date, '+1 day') 
+                    FROM dates 
+                    WHERE date < '{calendar_ending}' ), 
+                    weeks AS (
+                        SELECT *, 
+                            SUM(CASE WHEN day = '1' THEN 1 ELSE 0 END) OVER (ORDER BY dates.date) {'+ 1' if first_week_zero else ''} as week 
                         FROM dates
-                        WHERE date < '{calendar_ending}'
                     ),
                     calendar AS (
                         SELECT year,
                             date,
                             week,
                             day
-                        FROM dates
+                        FROM weeks
                     ),
-                    week_day_count AS (
+                    { '''week_day_count AS (
                         SELECT year,
                             date,
                             week,
@@ -393,14 +392,14 @@ class SqliteStatRepository():
                             date
                         FROM week_day_count
                         WHERE cnt_days = 7
-                    ),
+                    ),''' if not include_partial else '' }
                     total_time_week AS (
-                        SELECT fw.year,
-                            fw.week,
+                        SELECT sq.year,
+                            sq.week,
                             t.time_elapsed,
-                            SUM(COALESCE(t.time_elapsed,0)) OVER (PARTITION BY fw.year, fw.week) as total_time_worked
-                        FROM full_weeks fw
-                            LEFT JOIN timer_data t ON fw.date = t.date
+                            SUM(COALESCE(t.time_elapsed,0)) OVER (PARTITION BY sq.year, sq.week) as total_time_worked
+                        FROM {'calendar' if include_partial else 'full_weeks'} sq
+                            LEFT JOIN timer_data t ON sq.date = t.date
                     )
                     SELECT year,
                         week,

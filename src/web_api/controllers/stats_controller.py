@@ -16,7 +16,7 @@ def get_home_stats():
 def get_week_stats():
     try:
         service = StatServiceFactory().create_stat_service(g._database, request.args)
-        return service.get_week_total_time_per_week_for_years(service.dates), 200
+        return service.get_total_time_per_week_for_year(service.dates), 200
     except Exception as e :
         return str(e), 400
 

@@ -325,19 +325,19 @@ class YearStatService(BaseStatService):
         return {"months" : months,
                 "stackedBarChart" : stacked,
                 "monthsLineChart": line,
-                "weekLineChart": self.get_week_total_time_per_week_for_years([year])}
+                "weekLineChart": self.get_total_time_per_week_for_year(year)}
 
 
     def get_column_dates(self, year : str):
         return [f"{year}-{month:02d}" for month in range(1, 13)]
 
 
-    def get_week_total_time_per_week_for_years(self, years : list[str]):
+    def get_total_time_per_week_for_year(self, year : Optional[str] = None):
         '''
             Used to fill a year of week times in a bar chart in the front.
         '''
         try:
-            res = self.repo.total_time_per_week_for_years(years)
+            res = self.repo.total_time_per_week_for_year(year)
             if res == [] : raise ValueError("No result")
             y_set = {year for (year, _, _) in res}
             obj = {}
