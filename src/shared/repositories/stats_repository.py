@@ -80,7 +80,7 @@ class SqliteStatRepository():
                 elif time_span == 'year':
                     where_clause.append("date(strftime('%Y', date)) = date(strftime('%Y', 'now'));") 
 
-        query = f"SELECT sum(time_elapsed) as totsec {from_clause} WHERE {' AND '.join(where_clause)}"
+        query = f"SELECT COALESCE(sum(time_elapsed), 0) as totsec {from_clause} WHERE {' AND '.join(where_clause)}"
         timer_count = self.connexion.execute(query, params).fetchone() if params else self.connexion.execute(query).fetchone()
         return timer_count[0]
 
@@ -565,21 +565,21 @@ class SqliteStatRepository():
                             SELECT SUM(time_elapsed) OVER (PARTITION BY date) as total_day, ROW_NUMBER() OVER (PARTITION BY date) as row_num 
                             FROM timer_data 
                             WHERE strftime('%Y', date) = strftime('%Y', 'now')) 
-                           SELECT AVG(total_day) as mean_day FROM f WHERE row_num= 1;'''
+                           SELECT COALESCE(AVG(total_day),0) as mean_day FROM f WHERE row_num= 1;'''
                 return self.connexion.execute(query).fetchone()[0]
             case "week":
                 query = '''WITH f AS (
                             SELECT SUM(time_elapsed) OVER (PARTITION BY strftime('%W', date)) as total_week, ROW_NUMBER() OVER (PARTITION BY strftime('%W', date)) as row_num 
                             FROM timer_data 
                             WHERE strftime('%Y', date) = strftime('%Y', 'now')) 
-                            SELECT AVG(total_week) as mean_week FROM f WHERE row_num = 1;'''
+                            SELECT COALESCE(AVG(total_week),0) as mean_week FROM f WHERE row_num = 1;'''
                 return self.connexion.execute(query).fetchone()[0]
             case "month":
                 query = '''WITH f AS (
                             SELECT SUM(time_elapsed) OVER (PARTITION BY strftime('%Y-%m', date)) as total_week, ROW_NUMBER() OVER (PARTITION BY strftime('%Y-%m', date)) as row_num 
                             FROM timer_data 
                             WHERE strftime('%Y', date) = strftime('%Y', 'now')) 
-                            SELECT AVG(total_week) as mean_week FROM f WHERE row_num = 1;'''
+                            SELECT COALESCE(AVG(total_week),0) as mean_week FROM f WHERE row_num = 1;'''
                 return self.connexion.execute(query).fetchone()[0]
             case "year":
                 raise NotImplementedError('Not implemented yet.')
