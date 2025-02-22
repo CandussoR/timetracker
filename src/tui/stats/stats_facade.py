@@ -18,10 +18,10 @@ def display_stats(connexion : Connection):
             print(f"\t    {task} : {format_time(time, 'hour')} ({ratio}%)")
             print(f"\t\tCurrent streak : {task_streak[0][1]} {max}")
 
-    print(f"\n\tThis year's average day : {repo.average_day_this_year()}")
+    print(f"\n\tThis year's average day : {repo.average_day_this_year() or 'No data yet.'}")
 
     max_stat = repo.max_in_a_day()
-    print(f"\n\tYour maximum : {max_stat[1]} ({max_stat[0]}).")
+    print(f"\n\tYour maximum : {max_stat[1] or 'No data yet.'}{' ('+max_stat[0]+')' if max_stat[0] else ''}")
 
     display_timer_count_and_time(repo, "week")
     display_timer_count_and_time(repo, "year")
