@@ -173,12 +173,14 @@ class WeekStatService(BaseStatService):
         super().__init__(connexion, request)
 
 
-    def get_home_stat(self):
+    def get_home_stat(self, a_date : Optional[str] = None):
         mean_week = self.repo.mean_time_per_period("week")
         formatted_mean_week = format_time(mean_week, "day", split=True) if mean_week > 86400 else format_time(mean_week, "hour", split=True)
+        time_span = "week" if not a_date else None
+        params = None if not a_date else {"week" : a_date}
         return {
-                    "count": self.repo.timer_count("week"),
-                    "time" : format_time(self.repo.total_time("week") or 0, "hour", split=True),
+                    "count": self.repo.timer_count(time_span, params),
+                    "time" : format_time(self.repo.total_time(time_span, params) or 0, "hour", split=True),
                     "mean": formatted_mean_week
                 }
 
@@ -191,6 +193,10 @@ class WeekStatService(BaseStatService):
 
 
     def get_generic_stat(self, week_beginning_date : datetime | None = None) :
+        ret = {}
+        if week_beginning_date:
+            ret["resume"] = self.get_home_stat(week_beginning_date)
+
         # 1.1 Get all the dates for the current week
         # assuming Monday is the start of the week
         if not week_beginning_date :
@@ -211,7 +217,8 @@ class WeekStatService(BaseStatService):
         # 2. Total time per day of the week
         days_line_chart = super().create_apex_line_chart_object(time_per_day, len_fill)
 
-        return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
+        ret["details"] = {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
+        return ret
 
 
     def get_column_dates(self, date : datetime | None = None):
