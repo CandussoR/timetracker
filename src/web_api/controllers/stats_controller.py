@@ -28,25 +28,12 @@ def get_task_time_ratio():
     except Exception as e :
         return str(e), 400
 
-@stats_blueprint.get("/stats/generic/week")
-def get_generic_week_stats():
+@stats_blueprint.get("/stats/generic")
+def get_generic_stats():
     try:
-        return WeekStatService(g._database).get_generic_stat(), 200
-    except Exception as e :
-        return str(e), 400
-
-
-@stats_blueprint.get("/stats/generic/month")
-def def_generic_month_stats():
-    try:
-        return MonthStatService(g._database).get_generic_stat(), 200
-    except Exception as e:
-        return str(e), 400
-
-@stats_blueprint.get("/stats/generic/year")
-def def_generic_year_stats():
-    try:
-        return YearStatService(g._database).get_generic_stat(), 200
+        req = request.args
+        service = StatServiceFactory().create_stat_service(g._database, request.args)
+        return service.get_generic_stat(req["date"]), 200 # type: ignore
     except Exception as e:
         return str(e), 400
 

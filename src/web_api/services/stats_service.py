@@ -1,5 +1,5 @@
 from sqlite3 import Connection
-from typing import Optional
+from typing import Literal, Optional
 from flask import g
 from src.shared.repositories.stats_repository import SqliteStatRepository
 from src.shared.utils.custom_dict_converter import convert_to_custom_dict
@@ -9,7 +9,6 @@ from werkzeug.datastructures import ImmutableMultiDict
 import calendar
 
 from src.web_api.services.time_record_service import TimeRecordService
-
 
 class BaseStatService():
     def __init__(self, connexion : Connection | None = None, request : ImmutableMultiDict | dict | None = None):
@@ -90,7 +89,7 @@ class BaseStatService():
                 raise ValueError("Wrong period")
     
 
-    def get_task_time_ratio(self, range : list[datetime]):
+    def get_task_time_ratio(self, range : list[datetime]) -> list[dict]:
         '''
             There's a little quirk here : if a week already set is to be passed, the dict must be of type `{"weekStart" : dt, "weekEnd" : dt}`.
             Otherwise, we take a specified period and do our little thing, and week is transformed in said way.
@@ -143,21 +142,30 @@ class BaseStatService():
 class DayStatService(BaseStatService):
     def __init__(self, connexion : Optional[Connection], request: Optional[ImmutableMultiDict] = None):
         super().__init__(connexion, request)
+        print("DayStatService initialised, request is", self.request)
 
-    def get_home_stat(self):
+
+    def get_home_stat(self, a_date: Optional[str] = None):
+        time_span = "today" if not a_date else None
+        params = {"day": a_date} if a_date else None
         return  {
-                "count": self.repo.timer_count("today"),
-                "time" : format_time(self.repo.total_time("today") or 0, "hour", split=True),
-                "mean" : format_time(self.repo.mean_time_per_period("day"), "hour", split=True)
-                }
+            "count": self.repo.timer_count(time_span, params),
+            "time" : format_time(self.repo.total_time(time_span, params) or 0, "hour", split=True),
+            "mean" : format_time(self.repo.mean_time_per_period("day"), "hour", split=True)
+            }
 
 
     def get_task_time_ratio(self, range : list[datetime]):
         return super().get_task_time_ratio(range)
 
 
-    def get_generic_stat(self, a_date : str) -> list[dict]:
-        return self.get_task_time_ratio([a_date])
+    def get_generic_stat(self, a_date : str) -> dict:
+        if not a_date:
+            raise Exception("This method needs a date.")
+        ret = {}
+        ret["resume"] = self.get_home_stat(a_date)
+        ret["detail"] = self.get_task_time_ratio([a_date])
+        return ret
 
 
 class WeekStatService(BaseStatService):
@@ -165,12 +173,14 @@ class WeekStatService(BaseStatService):
         super().__init__(connexion, request)
 
 
-    def get_home_stat(self):
+    def get_home_stat(self, a_date : Optional[str] = None):
         mean_week = self.repo.mean_time_per_period("week")
         formatted_mean_week = format_time(mean_week, "day", split=True) if mean_week > 86400 else format_time(mean_week, "hour", split=True)
+        time_span = "week" if not a_date else None
+        params = None if not a_date else {"week" : a_date}
         return {
-                    "count": self.repo.timer_count("week"),
-                    "time" : format_time(self.repo.total_time("week") or 0, "hour", split=True),
+                    "count": self.repo.timer_count(time_span, params),
+                    "time" : format_time(self.repo.total_time(time_span, params) or 0, "hour", split=True),
                     "mean": formatted_mean_week
                 }
 
@@ -183,6 +193,10 @@ class WeekStatService(BaseStatService):
 
 
     def get_generic_stat(self, week_beginning_date : datetime | None = None) :
+        ret = {}
+        if week_beginning_date:
+            ret["resume"] = self.get_home_stat(week_beginning_date)
+
         # 1.1 Get all the dates for the current week
         # assuming Monday is the start of the week
         if not week_beginning_date :
@@ -203,7 +217,8 @@ class WeekStatService(BaseStatService):
         # 2. Total time per day of the week
         days_line_chart = super().create_apex_line_chart_object(time_per_day, len_fill)
 
-        return {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
+        ret["details"] = {"dates" : days_in_week, "stackedBarChart" : stacked, "daysLineChart": days_line_chart}
+        return ret
 
 
     def get_column_dates(self, date : datetime | None = None):
@@ -225,12 +240,15 @@ class MonthStatService(BaseStatService):
     def __init__(self, connexion : Optional[Connection], request: Optional[ImmutableMultiDict] = None):
         super().__init__(connexion, request)
 
-    def get_home_stat(self):
+
+    def get_home_stat(self, a_date : Optional[str] = None):
         mean_month = self.repo.mean_time_per_period("month")
         formatted_mean_month = format_time(mean_month, "day", split=True) if mean_month > 86400 else format_time(mean_month, "hour", split=True)
+        time_span = "month" if not a_date else None
+        params = None if not a_date else {"month" : a_date}
         return {
-                    "count": self.repo.timer_count("month"),
-                    "time" : format_time(self.repo.total_time("month") or 0, "day", split=True),
+                    "count": self.repo.timer_count(time_span, params),
+                    "time" : format_time(self.repo.total_time(time_span, params) or 0, "day", split=True),
                     "mean" : formatted_mean_month
                 }
 
@@ -246,6 +264,10 @@ class MonthStatService(BaseStatService):
             `stackedBarChart` : data formated for Apex Charts Stacked Bar Chart,
             `weeksLineChart` : date formated for Apex Charts Line Chart.
         '''
+        ret = {}
+        if datestring:
+            ret["resume"] = self.get_home_stat(datestring)
+
         # TODO : Must find a more robust solution
         original_datestring = datestring
         if not datestring :
@@ -275,7 +297,9 @@ class MonthStatService(BaseStatService):
         len_fill = len(week_column_labels) - len(week_times)
 
         week_line_chart = super().create_apex_line_chart_object(week_times, len_fill)
-        return {"weeks" : week_column_labels, "stackedBarChart" : stacked, "weeksLineChart": week_line_chart }
+
+        ret["details"] = {"weeks" : week_column_labels, "stackedBarChart" : stacked, "weeksLineChart": week_line_chart }
+        return ret
 
 
     def get_column_dates(self, datestring : str):
@@ -296,10 +320,12 @@ class YearStatService(BaseStatService):
         super().__init__(connexion, request)
 
 
-    def get_home_stat(self):
+    def get_home_stat(self, a_date : Optional[str]):
+        time_span = "year" if not a_date else None
+        params = None if not a_date else {"year" : a_date}
         return {
-                    "count": self.repo.timer_count("year"),
-                    "time" : format_time(self.repo.total_time("year") or 0, "day", split=True)
+                    "count": self.repo.timer_count(time_span, params),
+                    "time" : format_time(self.repo.total_time(time_span, params) or 0, "day", split=True)
                 }
 
 
@@ -308,10 +334,14 @@ class YearStatService(BaseStatService):
 
 
     def get_generic_stat(self, year : Optional[str] = None) :
-        # 1.2. Get task_time_ratio for every month of year.
-        if year is None:
+        ret = {}
+
+        if year:
+            ret["resume"] = self.get_home_stat(year)
+        else:
             year = datetime.now().strftime('%Y')
 
+        # 1.2. Get task_time_ratio for every month of year.
         ratios = self.repo.get_task_time_per_month_in_year(year)
         months = self.get_column_dates(year)
         time_per_month = self.repo.total_time_per_month_in_range(f'{year}-01-01', f'{year}-12-31')
@@ -322,10 +352,11 @@ class YearStatService(BaseStatService):
         # # 2. Total time per month of year
         line = super().create_apex_line_chart_object(time_per_month, len_fill)
 
-        return {"months" : months,
+        ret["details"] = {"months" : months,
                 "stackedBarChart" : stacked,
                 "monthsLineChart": line,
                 "weekLineChart": self.get_total_time_per_week_for_year(year)}
+        return ret
 
 
     def get_column_dates(self, year : str):

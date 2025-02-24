@@ -1,7 +1,7 @@
 from sqlite3 import connect
 from typing import Literal, Optional, Tuple, Union
 from sqlite3.dbapi2 import Connection
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class SqliteStatRepository():
 
@@ -559,6 +559,7 @@ class SqliteStatRepository():
 
     def mean_time_per_period(self, period : Literal["day", "week", "month", "year"]) -> int:
         '''Returns an int which is the time elapsed in seconds.'''
+        #TODO : what do we return when asked past stat ? Do we return it ?
         match period:
             case "day":
                 query = '''WITH f AS (
@@ -568,6 +569,7 @@ class SqliteStatRepository():
                            SELECT COALESCE(AVG(total_day),0) as mean_day FROM f WHERE row_num= 1;'''
                 return self.connexion.execute(query).fetchone()[0]
             case "week":
+                # TODO : will probably bugg if week is 00 in Sqlite.
                 query = '''WITH f AS (
                             SELECT SUM(time_elapsed) OVER (PARTITION BY strftime('%W', date)) as total_week, ROW_NUMBER() OVER (PARTITION BY strftime('%W', date)) as row_num 
                             FROM timer_data 
@@ -594,6 +596,11 @@ class SqliteStatRepository():
         keys = params.keys()
         if "day" in keys:
             parameters.append("date = (:day)")
+        # Only when querying generic stats for a past week
+        elif "week" in keys:
+            week_dt = datetime.strptime(params["week"], '%Y-%m-%d')
+            end_of_week = datetime.strftime(week_dt + timedelta(days=6), '%Y-%m-%d')
+            parameters.append(f"date BETWEEN (:week) AND '{end_of_week}'")
         elif set(["weekStart", "weekEnd"]).issubset(keys):
             parameters.append(f"date BETWEEN (:weekStart) AND (:weekEnd)")
         elif "month" in keys:
