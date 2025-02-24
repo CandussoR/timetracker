@@ -1,5 +1,5 @@
 from sqlite3 import Connection
-from typing import Optional
+from typing import Literal, Optional
 from flask import g
 from src.shared.repositories.stats_repository import SqliteStatRepository
 from src.shared.utils.custom_dict_converter import convert_to_custom_dict
@@ -9,7 +9,6 @@ from werkzeug.datastructures import ImmutableMultiDict
 import calendar
 
 from src.web_api.services.time_record_service import TimeRecordService
-
 
 class BaseStatService():
     def __init__(self, connexion : Connection | None = None, request : ImmutableMultiDict | dict | None = None):
@@ -90,7 +89,7 @@ class BaseStatService():
                 raise ValueError("Wrong period")
     
 
-    def get_task_time_ratio(self, range : list[datetime]):
+    def get_task_time_ratio(self, range : list[datetime]) -> list[dict]:
         '''
             There's a little quirk here : if a week already set is to be passed, the dict must be of type `{"weekStart" : dt, "weekEnd" : dt}`.
             Otherwise, we take a specified period and do our little thing, and week is transformed in said way.
@@ -143,21 +142,30 @@ class BaseStatService():
 class DayStatService(BaseStatService):
     def __init__(self, connexion : Optional[Connection], request: Optional[ImmutableMultiDict] = None):
         super().__init__(connexion, request)
+        print("DayStatService initialised, request is", self.request)
 
-    def get_home_stat(self):
+
+    def get_home_stat(self, a_date: Optional[str] = None):
+        time_span = "today" if not a_date else None
+        params = {"day": a_date} if a_date else None
         return  {
-                "count": self.repo.timer_count("today"),
-                "time" : format_time(self.repo.total_time("today") or 0, "hour", split=True),
-                "mean" : format_time(self.repo.mean_time_per_period("day"), "hour", split=True)
-                }
+            "count": self.repo.timer_count(time_span, params),
+            "time" : format_time(self.repo.total_time(time_span, params) or 0, "hour", split=True),
+            "mean" : format_time(self.repo.mean_time_per_period("day"), "hour", split=True)
+            }
 
 
     def get_task_time_ratio(self, range : list[datetime]):
         return super().get_task_time_ratio(range)
 
 
-    def get_generic_stat(self, a_date : str) -> list[dict]:
-        return self.get_task_time_ratio([a_date])
+    def get_generic_stat(self, a_date : str) -> dict:
+        if not a_date:
+            raise Exception("This method needs a date.")
+        ret = {}
+        ret["resume"] = self.get_home_stat(a_date)
+        ret["detail"] = self.get_task_time_ratio([a_date])
+        return ret
 
 
 class WeekStatService(BaseStatService):
