@@ -7,6 +7,7 @@ from src.shared.utils.format_time import format_time
 from datetime import datetime, timedelta
 from werkzeug.datastructures import ImmutableMultiDict
 import calendar
+from src.shared.utils.datetime_to_string import datetime_to_string as dts
 
 from src.web_api.services.time_record_service import TimeRecordService
 
@@ -33,70 +34,77 @@ class BaseStatService():
         }
 
 
-    def get_period_and_dates(self, request : dict) -> tuple[str, list[datetime]] :
-
+    def get_period_and_dates(self, request : dict) -> tuple[str, str|list[str]] :
         keys = request.keys()
 
-        if "period" in keys :
+        if "period" in keys and "date" in keys and request["date"]:
+            return request["period"], self.generate_dates_for_period(request["period"], request["date"])
+        elif "period" in keys:
             return request["period"], self.generate_dates_for_period(request["period"])
 
         if "day" in keys :
-            return "day", [request["day"]]
+            return "day", request["day"]
 
         elif "week" in keys:
             return "week", request["week"]
         
         elif set(["weekStart", "weekEnd"]).issubset(keys):
-            return "week", [request["weekStart"], request["weekEnd"]]
-
+            return "week", request["weekStart"]
         elif "month" in keys :
-            year, month = request["month"].year, request["month"].month
-            last_day = calendar.monthrange(year, month)[1]
-            return "month", [datetime(year, month, 1), datetime(year, month, last_day)]
+            return "month", request["month"]
 
         elif "year" in keys :
-            return "year", [request["year"], datetime(request["year"].year, 12, 31)]
+            return "year", request["year"]
 
         elif set(["rangeBeginning", "rangeEnding"]).issubset(keys) :
             return "custom", [request["rangeBeginning"], request["rangeEnding"]]
 
-        elif ( (set(["day", "weekStart", "month", "year", "rangeBeginning"]).intersection(keys) == set() )
-            and "tag" in keys):
-            d = list(map(lambda x : datetime.strptime(x, "%Y-%m-%d"), self.repo.get_first_and_last_date_in_db()))
-            return "custom", d
+        elif "tag" in keys:
+            (fd,ld) = self.repo.get_first_and_last_date_in_db()
+            return "custom", [fd,ld]
 
         else :
             raise KeyError("Period is not valid")
         
     
-    def generate_dates_for_period(self, period : str) -> list[datetime]:
+    def generate_dates_for_period(self, period : str, date : Optional[str] = None) -> str:
         '''
             Returns a list of one date (for day) or two dates (for any range).
         '''
+        
         now = datetime.now()
         match(period):
             case "day":
-                return [now]
+                return dts('day', now) if not date else date
             case "week":
-                start_of_week = now - timedelta(days=now.weekday())
-                return [start_of_week, start_of_week + timedelta(days=6)]
+                if date:
+                    d = datetime.strptime(date, '%Y-%M-%d')
+                    start_of_week = d - timedelta(days=d.weekday())
+                else:
+                    start_of_week = now - timedelta(days=now.weekday())
+                return dts('day', start_of_week)
             case "month":
-                last_day = calendar.monthrange(now.year, now.month)[1]
-                return [datetime(now.year, now.month, 1), datetime(now.year, now.month, last_day)]
+                return date if date else dts('month', datetime(now.year, now.month, 1))
             case "year":
-                return [datetime(now.year,1,1), datetime(now.year,12,31)]
+                return str(now.year) if not date else date
             case _:
                 raise ValueError("Wrong period")
     
 
-    def get_task_time_ratio(self, range : list[datetime]) -> list[dict]:
+    def get_task_time_ratio(self) -> list[dict]:
         '''
             There's a little quirk here : if a week already set is to be passed, the dict must be of type `{"weekStart" : dt, "weekEnd" : dt}`.
             Otherwise, we take a specified period and do our little thing, and week is transformed in said way.
         '''
-        if not range : raise ValueError("Ye not good old implementation")
+        assert self.request and self.request["period"] and ("date" in self.request or self.dates)
+        # Preparing dict : this is a mess
+        cp_request = self.request
+        cp_request[self.request["period"]] = self.request["date"] if "date" in self.request else self.dates
+        del cp_request['period']
+        if "date" in cp_request:
+            del cp_request['date']
 
-        res = self.repo.get_task_time_ratio(range)
+        res = self.repo.get_task_time_ratio(cp_request)
         if res == None:
             return []
 
@@ -142,7 +150,6 @@ class BaseStatService():
 class DayStatService(BaseStatService):
     def __init__(self, connexion : Optional[Connection], request: Optional[ImmutableMultiDict] = None):
         super().__init__(connexion, request)
-        print("DayStatService initialised, request is", self.request)
 
 
     def get_home_stat(self, a_date: Optional[str] = None):
@@ -155,16 +162,16 @@ class DayStatService(BaseStatService):
             }
 
 
-    def get_task_time_ratio(self, range : list[datetime]):
-        return super().get_task_time_ratio(range)
+    def get_task_time_ratio(self):
+        return super().get_task_time_ratio()
 
 
     def get_generic_stat(self, a_date : str) -> dict:
         if not a_date:
-            raise Exception("This method needs a date.")
+            a_date = datetime.today().strftime('%Y-%m-%d')
         ret = {}
         ret["resume"] = self.get_home_stat(a_date)
-        ret["detail"] = self.get_task_time_ratio([a_date])
+        ret["detail"] = self.get_task_time_ratio()
         return ret
 
 
@@ -185,26 +192,25 @@ class WeekStatService(BaseStatService):
                 }
 
 
-    def get_task_time_ratio(self, range : list[datetime]):
+    def get_task_time_ratio(self):
         '''
             Get task_time_ratio according to the request passed : either with period, or with pair weekStart and weekEnd.
         '''
-        return super().get_task_time_ratio(range)
+        return super().get_task_time_ratio()
 
 
-    def get_generic_stat(self, week_beginning_date : datetime | None = None) :
+    def get_generic_stat(self, week_beginning_date : str | None = None) :
         ret = {}
         if week_beginning_date:
             ret["resume"] = self.get_home_stat(week_beginning_date)
 
         # 1.1 Get all the dates for the current week
         # assuming Monday is the start of the week
-        if not week_beginning_date :
-            week_beginning_date = datetime.today()
-        if isinstance(week_beginning_date, str):
-            week_beginning_date = datetime.strptime(week_beginning_date, '%Y-%m-%d')
+        beginning_date : datetime|str = week_beginning_date or datetime.today()
+        if isinstance(beginning_date, str):
+            beginning_date = datetime.strptime(beginning_date, '%Y-%m-%d')
 
-        start_of_week, end_of_week = self._get_week_range(week_beginning_date)
+        start_of_week, end_of_week = self._get_week_range(beginning_date)
 
         days_in_week = self.get_column_dates(start_of_week)
         time_per_day = self.repo.total_time_per_day_in_range({"rangeBeginning" : days_in_week[0], "rangeEnding" : days_in_week[-1]})
@@ -253,8 +259,8 @@ class MonthStatService(BaseStatService):
                 }
 
 
-    def get_task_time_ratio(self, range):
-        return super().get_task_time_ratio(range)
+    def get_task_time_ratio(self):
+        return super().get_task_time_ratio()
 
 
     def get_generic_stat(self, datestring : Optional[str] = None) -> dict:
@@ -320,7 +326,7 @@ class YearStatService(BaseStatService):
         super().__init__(connexion, request)
 
 
-    def get_home_stat(self, a_date : Optional[str]):
+    def get_home_stat(self, a_date : Optional[str] = None):
         time_span = "year" if not a_date else None
         params = None if not a_date else {"year" : a_date}
         return {
@@ -329,8 +335,8 @@ class YearStatService(BaseStatService):
                 }
 
 
-    def get_task_time_ratio(self, range : list[datetime]):
-        return super().get_task_time_ratio(range)
+    def get_task_time_ratio(self):
+        return super().get_task_time_ratio()
 
 
     def get_generic_stat(self, year : Optional[str] = None) :

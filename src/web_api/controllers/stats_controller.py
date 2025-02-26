@@ -23,8 +23,10 @@ def get_week_stats():
 @stats_blueprint.get("/stats/task_ratio")
 def get_task_time_ratio():
     try:
-        service = StatServiceFactory().create_stat_service(g._database, request.args)
-        return service.get_task_time_ratio(service.dates), 200
+        req = request.args
+        print("req in controller", req)
+        service = StatServiceFactory().create_stat_service(g._database, req)
+        return service.get_task_time_ratio(req["date"] if "date" in req else None), 200
     except Exception as e :
         return str(e), 400
 
@@ -33,8 +35,10 @@ def get_generic_stats():
     try:
         req = request.args
         service = StatServiceFactory().create_stat_service(g._database, request.args)
-        return service.get_generic_stat(req["date"]), 200 # type: ignore
+        return service.get_generic_stat(req["date"] if "date" in req else None), 200 # type: ignore
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())
         return str(e), 400
 
 

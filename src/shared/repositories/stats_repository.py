@@ -287,17 +287,14 @@ class SqliteStatRepository():
         return dates
 
 
-    def get_task_time_ratio(self, range : list[datetime], params : Optional[dict] = None) -> list[tuple]:
+    def get_task_time_ratio(self, params : dict) -> list[tuple]:
         '''
            Count time on task during a certain period of time,
            or time on subtasks of a certain task.
            Takes a dict with a period key for clarity and date(s) as strings, return a tuple (date, task, total_time, ratio)
         '''
-        # Should refactor this too to get it more easily in the service.
         #TODO : Manage a full request with tag ?
         where_clause = self.build_where_clause_from_dict(params) if params else []
-        date_where = "date = date(?)" if len(range) < 2 else "date BETWEEN date(?) AND date(?)"
-        where_clause.insert(0, date_where)
 
         query = f"""
                 WITH q as (
@@ -314,9 +311,9 @@ class SqliteStatRepository():
                     ROUND((total_time/ (SELECT SUM(total_time) FROM q)*100), 1) as ratio
                     FROM q
                     GROUP BY task_name
-                    ORDER BY ratio DESC;
+                    ORDER BY ratio DESC, task_name ASC;
                 """
-        return self.connexion.execute(query, [*range]).fetchall()
+        return self.connexion.execute(query, params).fetchall()
 
 
     def get_task_time_per_day_between(self, start : str, end : str):

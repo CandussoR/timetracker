@@ -20,7 +20,7 @@ def convert_to_custom_dict(params):
     for k in params :
         if k in ["day", "month", "week", "year"]:
             conditions[k] = datetime.strptime(str(params[k]), time_format[k])
-        elif k == "week[]" and not "weekStart" in conditions.keys():
+        elif k == "week[]" or k == "week" and not "weekStart" in conditions.keys():
             [conditions["weekStart"], conditions["weekEnd"]] = map(lambda x : datetime.strptime(x, time_format["day"]), params.getlist("week[]"))
         elif k in ["rangeBeginning", "rangeEnding"]:
             conditions[k] = datetime.strptime(k, time_format["day"]) 
