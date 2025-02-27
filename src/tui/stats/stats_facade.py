@@ -4,6 +4,7 @@ from typing import Literal
 
 from src.shared.repositories.stats_repository import SqliteStatRepository
 from src.shared.utils.format_time import format_time
+from src.shared.utils.datetime_to_string import datetime_to_string as dts
 
 def display_stats(connexion : Connection):
     repo = SqliteStatRepository(connexion=connexion)
@@ -11,7 +12,7 @@ def display_stats(connexion : Connection):
     # gives an average time per day and a maximum.
     display_timer_count_and_time(repo, "today")
     
-    for task, time, ratio in repo.get_task_time_ratio(range = [datetime.today()]):
+    for task, time, ratio in repo.get_task_time_ratio({"day" : dts('day', datetime.today())}):
         if time is not None:
             task_streak = repo.max_and_current_streaks(task)
             max = "(max streak!)" if task_streak[0][1] == task_streak[0][0] else f"(max : {task_streak[0][0]})"
