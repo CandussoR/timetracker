@@ -8,9 +8,7 @@ __pycache__/
 todo.md
 *.mp3
 tests/
-!tests/shared/services/test_month_stats_service.py
-!tests/shared/services/test_year_stats_service.py
-!tests/shared/services/test_base_stats.py
+!tests/web_api/services
 projet.md
 end_of_year_report.py
 requirements2.txt
