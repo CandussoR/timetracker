@@ -12,13 +12,6 @@ def get_home_stats():
     except Exception as e:
         return str(e), 400
 
-@stats_blueprint.get("/stats/weeks")
-def get_week_stats():
-    try:
-        service = StatServiceFactory().create_stat_service(g._database, request.args)
-        return service.get_total_time_per_week_for_year(service.dates), 200
-    except Exception as e :
-        return str(e), 400
 
 @stats_blueprint.get("/stats/task_ratio")
 def get_task_time_ratio():
