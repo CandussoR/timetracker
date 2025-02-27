@@ -81,7 +81,7 @@ class TestStats(unittest.TestCase):
             self.assertEqual(ret, self.year_and_month_return)
     
     def test_task_time_ratio_year_without_date(self):
-        with patch('tests.shared.services.test_base_stats.datetime') as mock_date:
+        with patch('tests.web_api.services.test_base_stats.datetime') as mock_date:
             mock_date.now.return_value = datetime(2025, 12, 31)
             mock_date.side_effect = lambda *args, **kw: datetime(*args, **kw)
 
