@@ -25,10 +25,10 @@ class TestYearStatService(unittest.TestCase):
     
     def test_get_year_generic_stats(self):
         result = YearStatService(self.connexion).get_generic_stat("2024")
-        self.assertNotEqual(result["months"], [])
-        self.assertNotEqual(result["stackedBarChart"], [])
-        self.assertNotEqual(result["monthsLineChart"], [])
-        self.assertNotEqual(result["weekLineChart"], [])
+        self.assertNotEqual(result["details"]["months"], [])
+        self.assertNotEqual(result["details"]["stackedBarChart"], [])
+        self.assertNotEqual(result["details"]["monthsLineChart"], [])
+        self.assertNotEqual(result["details"]["weekLineChart"], [])
 
     
     def test_get_total_time_per_week_for_years(self):
