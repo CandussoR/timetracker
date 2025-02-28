@@ -51,6 +51,7 @@ def start(conf : Config, db_name : str):
                     except KeyboardInterrupt:
                         continue
                     print("\tGood job!")
+                    time_record.time_ending = datetime.now()
                     end_of_clock_facade(db_name, conf, time_record)
                     show_prompt = True
                 
@@ -70,8 +71,7 @@ def start(conf : Config, db_name : str):
                         continue
                     print("\tGood job!")
                     time_record.time_ending = datetime.now()
-                    time_record.log = enter_log()
-                    update_record(db_name, time_record)
+                    end_of_clock_facade(db_name, conf, time_record)
                     show_prompt = True
 
 
@@ -147,7 +147,12 @@ def launch_clock_facade(
     if duration:
         time_in_minutes = duration
     elif (not duration) and clock == "timer":
-        time_in_minutes = int(input("\tHow long (in minutes) ? > ")) * 60
+        while True:
+            try:
+                time_in_minutes = int(input("\tHow long (in minutes) ? > ")) * 60
+                break
+            except ValueError:
+                print("\tYou must enter a number for a timer.")
 
     input("\tPress key when ready.")
 
@@ -160,8 +165,7 @@ def launch_clock_facade(
         start_clock("stopwatch", time_record.time_beginning)
 
 
-def end_of_clock_facade(db_name : str, conf : Config, time_record : TimeRecordInput):
-    time_record.time_ending = datetime.now()
+def end_of_clock_facade(db_name : str, conf : Config, time_record : TimeRecordInput):  
     end_ring(conf)
     time_record.log = enter_log()
     update_record(db_name, time_record)
@@ -173,9 +177,12 @@ def set_record(db_name : str, old : bool = False) :
     tag_repo = tag_repository.SqliteTagRepository(connexion=connexion)
     task_repo = task_repository.SqliteTaskRepository(connexion=connexion)
     tag_id = None
-    task = task_input.task_string_input()
-    subtask = task_input.task_string_input(subtask=True)
-    task_id = task_input.get_task_rank_from_input(task_repo, f"{task} {subtask}")
+    while True:
+        task = task_input.task_string_input()
+        subtask = task_input.task_string_input(subtask=True)
+        task_id = task_input.get_task_rank_from_input(task_repo, f"{task} {subtask}")
+        if task_id:
+            break
     tag = tag_input.ask_input()
     if tag:
         tag_id = tag_input.get_tag_id_from_input(tag_repo, tag)
@@ -205,10 +212,11 @@ def update_record(db_name : str, time_record : TimeRecordInput):
 
 def start_clock(
     clock: Literal["timer", "stopwatch"],
-    time_beginning: Optional[datetime] = None,
+    time_beginning: datetime,
     times_in_minutes: Optional[int] = None,
 ):
     if clock == "timer" and time_beginning:
+        assert times_in_minutes
         clocks.timer(time_beginning, times_in_minutes)
     elif clock == "stopwatch":
         clocks.stopwatch(time_beginning)
@@ -234,14 +242,17 @@ def enter_log() -> str | None:
     
     print("\tEnter your log :")
     while True:
-        piece = input("\t    > ")
+        try:
+            piece = input("\t    > ")
 
-        if not piece:
-            return log
-        if piece and not log:
-            log = piece
-        elif piece and log:
-            log += f"  \n{piece}" 
+            if not piece:
+                return log
+            if piece and not log:
+                log = piece
+            elif piece and log:
+                log += f"  \n{piece}"
+        except KeyboardInterrupt:
+            return None
 
 def ask_date_input() -> str:
     while True:
