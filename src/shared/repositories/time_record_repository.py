@@ -64,8 +64,43 @@ class SqliteTimeRecordRepository():
                    LEFT JOIN tags ON tags.id = td.tag_id
                    WHERE {' AND '.join(parameters)}'''
         
-        print(query)
+        if "order" in keys and conditions["order"] == "recent":
+            query += " ORDER BY date DESC "        
+
+        if "page" and "page_size" in keys:
+            query += " LIMIT (:page_size) OFFSET ((:page - 1) * :page_size)";
         return self.connexion.execute(query, conditions).fetchall()
+    
+    def get_max_number_of_pages_for_request(self, conditions : dict) -> int:
+        assert "page_size" in conditions, conditions
+        keys = conditions.keys()
+        parameters = []
+        if "day" in keys:
+            parameters.append("date = date(:day)")
+        elif set(["weekStart", "weekEnd"]).issubset(keys):
+            parameters.append(f"date BETWEEN date(:weekStart) AND date(:weekEnd)")
+        elif set(["rangeBeginning", "rangeEnding"]).issubset(keys):
+            parameters.append("date BETWEEN date(:rangeBeginning) AND date(:rangeEnding)")
+        elif "year" in keys :
+            parameters.append(f"strftime('%Y', date) = :year")
+        elif "month" in keys:
+            parameters.append(f"strftime('%Y-%m', date) = :month")
+
+        if "task" in keys and not "subtask" in keys:
+            parameters.append("tasks.task_name = (:task)")
+        elif set(["task", "subtask"]).issubset(keys):
+            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
+            
+        if "tag" in keys:
+            parameters.append("tags.tag = (:tag)")
+
+        query = f'''SELECT COALESCE(CEIL(COUNT(td.id) / (:page_size)), 0)
+                   FROM timer_data td
+                   JOIN tasks ON tasks.id = td.task_id
+                   LEFT JOIN tags ON tags.id = td.tag_id
+                   WHERE {' AND '.join(parameters)}'''
+        return self.connexion.execute(query, conditions).fetchone()[0]
+
 
     def insert_beginning(self, record: TimeRecordInput) -> int:
         '''Returns the guid of the inserted time record.'''

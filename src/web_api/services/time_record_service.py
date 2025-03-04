@@ -43,10 +43,12 @@ class TimeRecordService():
                 # keeping the camel case to go with rangeBeginning etc.
                 # parsing like this for the bindings in the sqlite query and passing the dictionary : less hassle, but coupled
                 [conditions["weekStart"], conditions["weekEnd"]] = params.getlist("week[]")
+
+        max_pages = self.repo.get_max_number_of_pages_for_request(conditions)
         # To business
         data = self.repo.get_by(conditions)
         tr = [TimeRecordResource(*d) for d in data]
-        return TimeRecordSchema().dump(tr, many=True)
+        return {"pages" : max_pages, "records" : TimeRecordSchema().dump(tr, many=True)}
 
     def post(self, time_record_type : str, data : dict) -> dict:
         # Forced to use unknown=EXLUDE for Schema validation
