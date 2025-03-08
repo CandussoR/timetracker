@@ -5,7 +5,7 @@ class Config:
     def __init__(self, filepath : str):
         self.filepath = filepath
         conf = self._load(filepath)
-        self.local_database = conf["database"]
+        self.database = conf["database"]
         self.timer_sound_path = conf["timer_sound_path"]
         self.flows = conf["flows"]
 

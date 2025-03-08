@@ -4,25 +4,26 @@ from src.shared.config.conf import Config
 from src.tui.script import start
 import src.shared.database.sqlite_db as db
 from src.web_api.factory import create_flask_app
+import json
 
 def create_app(args : list[str]):
     '''Args are : config file path, [--test], [--api].'''
 
-    conf_file = validate_conf_path(args[0], is_test='--test' in args)
-    
-    conf = Config(conf_file)
+    conf_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "conf.json" if not "--test" in args else "test_conf.json"))
+ 
+    conf = Config(conf_path)
 
-    conn = db.connect(conf.local_database)
+    conn = db.connect(conf.database)
     db.create_tables(conn)
     conn.commit()
     conn.close()
 
     if "--api" in args:
-        app = create_flask_app(conf.local_database)
+        app = create_flask_app(conf_path)
         app.run(debug=True)
 
     else:
-        start(conf, conf.local_database)
+        start(conf, conf.database)
         
 
 def validate_conf_path(filepath, is_test) :
