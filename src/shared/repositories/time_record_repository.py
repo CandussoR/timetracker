@@ -54,6 +54,9 @@ class SqliteTimeRecordRepository():
         if "tag" in keys:
             parameters.append("tags.tag = (:tag)")
 
+        if "logIncludes" in keys:
+            parameters.append(f"""td.log LIKE '%{conditions["logIncludes"]}%'""")
+
         query = f'''SELECT td.guid,
                           tasks.task_name,
                           tasks.subtask,
@@ -72,6 +75,7 @@ class SqliteTimeRecordRepository():
 
         if "page" and "page_size" in keys:
             query += " LIMIT (:page_size) OFFSET ((:page - 1) * :page_size)";
+        
         return self.connexion.execute(query, conditions).fetchall()
     
     def get_max_number_of_pages_for_request(self, conditions : dict) -> int:
@@ -100,8 +104,11 @@ class SqliteTimeRecordRepository():
             
         if "tag" in keys:
             parameters.append("tags.tag = (:tag)")
+        
+        if "logIncludes" in keys:
+            parameters.append(f"""td.log LIKE '%{conditions["logIncludes"]}%'""")
 
-        query = f'''SELECT COALESCE(CEIL(COUNT(td.id) / (:page_size)), 0)
+        query = f'''SELECT CAST(COALESCE(CEIL(COUNT(td.id) / (:page_size * 1.0)), 0) as int)
                    FROM timer_data td
                    JOIN tasks ON tasks.id = td.task_id
                    LEFT JOIN tags ON tags.id = td.tag_id
