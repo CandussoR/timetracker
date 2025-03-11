@@ -39,40 +39,7 @@ CREATE_TIMER_TABLE = """
     CREATE INDEX IF NOT EXISTS idx_tag_id_timer ON timer_data (tag_id);
     """
 
-# CREATE_TEMP_TASK_TABLE = """
-#     CREATE TABLE IF NOT EXISTS tmp_tasks (
-#       id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-#       task_name TEXT NOT NULL,
-#       subtask TEXT,
-#       guid TEXT UNIQUE NOT NULL,
-#       UNIQUE (task_name, subtask));
-#     """
-
-# CREATE_TEMP_TAGS_TABLE = """
-#     CREATE TABLE IF NOT EXISTS tmp_tags (
-#     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-#     tag TEXT NOT NULL UNIQUE,
-#     guid TEXT UNIQUE NOT NULL
-#     );
-#     """
-
-# CREATE_TEMP_TIMER_TABLE = """
-#     CREATE TABLE IF NOT EXISTS tmp_timer_data(
-#     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-#     task_id INTEGER NOT NULL,
-#     date REAL,
-#     time_beginning REAL,
-#     time_ending REAL,
-#     time_elapsed REAL,
-#     tag_id INTEGER,
-#     log TEXT,
-#     guid TEXT UNIQUE NOT NULL,
-#     FOREIGN KEY (task_id)
-#         REFERENCES tasks (id),
-#     FOREIGN KEY (tag_id)
-#         REFERENCES tags (id)
-#         );
-# """
+CREATE_VERSION_TABLE = """CREATE TABLE IF NOT EXISTS version (version INTEGER PRIMARY KEY);"""
 
 
 def connect(db):
@@ -87,7 +54,10 @@ def create_tables(connexion):
         connexion.execute(CREATE_TASK_TABLE)
         connexion.execute(CREATE_TAGS_TABLE)
         connexion.executescript(CREATE_TIMER_TABLE)
+        connexion.executescript(CREATE_VERSION_TABLE)
 
-        # connexion.execute(CREATE_TEMP_TASK_TABLE)
-        # connexion.execute(CREATE_TEMP_TAGS_TABLE)
-        # connexion.execute(CREATE_TEMP_TIMER_TABLE)
+def set_version(connexion):
+    with connexion:
+        if not connexion.execute('SELECT version FROM version').fetchone():
+            connexion.execute('INSERT INTO version (version) VALUES (1)');
+            

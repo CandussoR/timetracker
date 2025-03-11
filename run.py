@@ -15,6 +15,7 @@ def create_app(args : list[str]):
 
     conn = db.connect(conf.database)
     db.create_tables(conn)
+    db.set_version(conn)
     conn.commit()
     conn.close()
 
