@@ -8,6 +8,7 @@ from src.web_api.controllers.time_record_controller import time_records_blueprin
 from src.web_api.controllers.task_controller import tasks_blueprint
 from src.web_api.controllers.stats_controller import stats_blueprint
 from src.web_api.controllers.tag_controller import tag_blueprint
+from src.web_api.controllers.settings_controller import settings_blueprint
 
 def create_flask_app(conf) -> Flask:
     app = Flask(__name__)
@@ -33,5 +34,6 @@ def create_flask_app(conf) -> Flask:
     app.register_blueprint(tasks_blueprint)
     app.register_blueprint(stats_blueprint)
     app.register_blueprint(tag_blueprint)
+    app.register_blueprint(settings_blueprint)
 
     return app
