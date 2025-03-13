@@ -1,3 +1,4 @@
+import pathlib
 import posixpath
 import os
 import shutil
@@ -9,7 +10,8 @@ def update_settings(args : dict, conf : Config):
         if k == "database":
             old_path = conf.database
             if os.path.isdir(v) and os.path.exists(v):
-                new_path = posixpath.join(v,os.path.basename(current_app.config["database"]))
+                v_posix = pathlib.PureWindowsPath(v).as_posix()
+                new_path = posixpath.join(v_posix,os.path.basename(current_app.config["database"]))
                 g._database.close()
                 shutil.copy2(current_app.config["database"], v)
             elif os.path.isfile(v) and v.endswith(".db"):
