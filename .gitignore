@@ -11,3 +11,4 @@ scripts/
 tests/
 !tests/web_api/services
 release_export.py
+logs/

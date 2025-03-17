@@ -1,5 +1,6 @@
 from sqlite3 import IntegrityError
-from flask import Blueprint, request
+from traceback import format_exc
+from flask import Blueprint, current_app, request
 from marshmallow import ValidationError
 
 from src.shared.exceptions.unique_constraint import UniqueConstraintError
@@ -15,6 +16,7 @@ def get_tags():
         tags = TagService().get_all()
         return tags, 200
     except Exception as e:
+        current_app.logger.error(format_exc())
         return str(e), 400
     
 
@@ -26,6 +28,7 @@ def get_tag(guid : str):
     except ValueError as e:
         return str(e), 404
     except Exception as e:
+        current_app.logger.error(format_exc())
         return str(e), 500
 
 
@@ -40,6 +43,7 @@ def create_tag():
     except UniqueConstraintError as e:
         return str(e), 422
     except Exception as e :
+        current_app.logger.error(format_exc())
         return str(e), 500
 
 
@@ -52,6 +56,7 @@ def update_tag():
     except ValidationError as e:
         return str(e), 400
     except Exception as e :
+        current_app.logger.error(format_exc())
         return str(e), 500
 
     
@@ -64,4 +69,5 @@ def delete_tag(guid : str):
     except IntegrityError as e:
         return "The tag couldn't be deleted because it is linked to existing timers.", 400
     except Exception as e:
+        current_app.logger.error(format_exc())
         return str(e), 500

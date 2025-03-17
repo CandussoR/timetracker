@@ -7,6 +7,7 @@ class Config:
         conf = self._load(filepath)
         self.database = conf["database"]
         self.timer_sound_path = conf["timer_sound_path"]
+        self.log_file = conf["log_file"]
         self.flows = conf["flows"]
 
 

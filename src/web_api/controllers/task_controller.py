@@ -1,6 +1,6 @@
-import json
 from sqlite3 import IntegrityError
-from flask import Blueprint, request
+from traceback import format_exc
+from flask import Blueprint, current_app, request
 from marshmallow import ValidationError
 
 from src.shared.exceptions.unique_constraint import UniqueConstraintError
@@ -28,6 +28,7 @@ def create_task():
     except UniqueConstraintError as e:
         return str(e), 422
     except Exception as e:
+        current_app.logger.error(format_exc())
         return str(e), 500
 
 
@@ -40,6 +41,7 @@ def update_task():
     except ValidationError as e:
         return str(e), 400
     except Exception as e:
+        current_app.logger.error(format_exc())
         return str(e), 500
 
 
@@ -51,4 +53,5 @@ def delete_task(guid : str):
     except IntegrityError as e:
         return "The task couldn't be deleted because it is linked to existing timers.", 400
     except Exception as e:
+        current_app.logger.error(format_exc())
         return str(e), 500

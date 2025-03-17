@@ -1,3 +1,4 @@
+import subprocess
 import sys
 import os
 from src.shared.config.conf import Config
@@ -12,6 +13,9 @@ def create_app(args : list[str]):
     conf_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "conf.json" if not "--test" in args else "test_conf.json"))
  
     conf = Config(conf_path)
+
+    if not os.path.exists(conf.log_file):
+        subprocess.call(f"mkdir -p {os.path.abspath(os.path.dirname(conf.log_file))} && touch {os.path.basename(conf.log_file)}")
 
     conn = db.connect(conf.database)
     db.create_tables(conn)

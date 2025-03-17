@@ -1,8 +1,9 @@
 import json
+from logging.config import dictConfig
 from sqlite3 import Connection
 from src.shared.config.conf import Config
 import src.shared.database.sqlite_db as sqlite_db
-from flask import Flask, g, current_app
+from flask import Flask, g, current_app, request
 from flask_cors import CORS
 from src.web_api.controllers.time_record_controller import time_records_blueprint
 from src.web_api.controllers.task_controller import tasks_blueprint
@@ -11,13 +12,41 @@ from src.web_api.controllers.tag_controller import tag_blueprint
 from src.web_api.controllers.settings_controller import settings_blueprint
 
 def create_flask_app(conf) -> Flask:
+    with open(conf, 'r') as f:
+        conf_content = json.load(f)
+
+    # Logger config
+    dictConfig({
+        "version": 1,
+        "formatters": {
+            "detailed": {
+                "format": "%(asctime)s - %(levelname)s - %(message)s",
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+            }
+        },
+        "handlers": {
+            "file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "level": "DEBUG",
+                "formatter": "detailed",
+                "filename": conf_content["log_file"],
+                "maxBytes": 1_048_576,
+                "backupCount": 3,
+                "encoding": "utf-8",
+            }
+        },
+        "root": {"level": "DEBUG", "handlers": ["file"]},
+    })
+
     app = Flask(__name__)
 
-    with open(conf, 'r') as f:
-        app.config.update({"conf" : conf})
-        app.config.update(json.load(f)) 
+    app.config.update({"conf" : conf})
+    app.config.update(conf_content) 
 
-    CORS(app, origins=["http://localhost:5173"])
+    # In case multiple processes are using the ports
+    cors_allowed = list([f"http://localhost:{num}" for num in range(5173, 5180)])
+    cors_allowed.append("http://tauri.localhost")
+    CORS(app, origins=cors_allowed)
 
     @app.before_request
     def get_db():
