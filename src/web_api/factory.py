@@ -11,10 +11,7 @@ from src.web_api.controllers.stats_controller import stats_blueprint
 from src.web_api.controllers.tag_controller import tag_blueprint
 from src.web_api.controllers.settings_controller import settings_blueprint
 
-def create_flask_app(conf) -> Flask:
-    with open(conf, 'r') as f:
-        conf_content = json.load(f)
-
+def create_flask_app(conf : Config) -> Flask:
     # Logger config
     dictConfig({
         "version": 1,
@@ -29,7 +26,7 @@ def create_flask_app(conf) -> Flask:
                 "class": "logging.handlers.RotatingFileHandler",
                 "level": "DEBUG",
                 "formatter": "detailed",
-                "filename": conf_content["log_file"],
+                "filename": conf.log_file,
                 "maxBytes": 1_048_576,
                 "backupCount": 3,
                 "encoding": "utf-8",
@@ -41,7 +38,7 @@ def create_flask_app(conf) -> Flask:
     app = Flask(__name__)
 
     app.config.update({"conf" : conf})
-    app.config.update(conf_content) 
+    app.config.update(conf.__dict__) 
 
     # In case multiple processes are using the ports
     cors_allowed = list([f"http://localhost:{num}" for num in range(5173, 5180)])

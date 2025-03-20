@@ -5,14 +5,13 @@ from src.shared.config.conf import Config
 from src.tui.script import start
 import src.shared.database.sqlite_db as db
 from src.web_api.factory import create_flask_app
-import json
 
 def create_app(args : list[str]):
     '''Args are : config file path, [--test], [--api].'''
 
     conf_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "conf.json" if not "--test" in args else "test_conf.json"))
  
-    conf = Config(conf_path)
+    conf = Config(conf_path, is_tui= "--api" not in args)
 
     if not os.path.exists(conf.log_file):
         subprocess.call(f"mkdir -p {os.path.abspath(os.path.dirname(conf.log_file))} && touch {os.path.basename(conf.log_file)}")
@@ -24,7 +23,7 @@ def create_app(args : list[str]):
     conn.close()
 
     if "--api" in args:
-        app = create_flask_app(conf_path)
+        app = create_flask_app(conf)
         app.run(debug=True)
 
     else:
