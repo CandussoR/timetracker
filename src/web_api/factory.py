@@ -37,7 +37,6 @@ def create_flask_app(conf : Config) -> Flask:
 
     app = Flask(__name__)
 
-    app.config.update({"conf" : conf})
     app.config.update(conf.__dict__) 
 
     # In case multiple processes are using the ports

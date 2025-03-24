@@ -15,7 +15,7 @@ def get_conf():
 
 @settings_blueprint.put('/settings')
 def update_conf():
-    conf = Config(current_app.config["conf"])
+    conf = Config(current_app.config["conf_path"])
     args = request.get_json()
     try:
         update_settings(args, conf)

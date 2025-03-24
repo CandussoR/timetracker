@@ -15,7 +15,7 @@ def create_app(args : list[str]):
 
     if not os.path.exists(conf.log_file):
         subprocess.call(f"mkdir -p {os.path.abspath(os.path.dirname(conf.log_file))}")
-        # subprocess.call(f"touch {os.path.basename(conf.log_file)}")
+        subprocess.call(f"touch {os.path.basename(conf.log_file)}")
 
     conn = db.connect(conf.database)
     db.create_tables(conn)
