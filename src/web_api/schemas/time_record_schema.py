@@ -4,8 +4,8 @@ class TimeRecordRequestSchema(Schema):
     '''task_id and tag_id are not required because they are set afterwards.'''
     task_id = fields.String(required=False, validate=validate.Length(equal=26))
     date = fields.Date(required=True)
-    time_beginning = fields.Time(required=True, format="%H:%M:%S", data_key="timeBeginning")
-    time_ending = fields.Time(required=True, format="%H:%M:%S", data_key="timeEnding")
+    time_beginning = fields.Time(required=True, format="%H:%M:%S", data_key="time_beginning")
+    time_ending = fields.Time(required=True, format="%H:%M:%S", data_key="time_ending")
     tag_id = fields.String(required=False, allow_none=True, validate=validate.Length(equal=26))
     log = fields.Str(required=False, allow_none=True)
 
