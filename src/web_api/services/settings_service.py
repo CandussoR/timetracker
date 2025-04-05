@@ -17,14 +17,18 @@ def update_settings(args : dict, conf : Config):
             elif os.path.isfile(v) and v.endswith(".db"):
                 new_path = v
             else:
-                raise ValueError("This path is neither a directory neither a database.")
+                raise ValueError("This path is neither a directory nor a database.")
             current_app.config["database"] = new_path
-            conf.database = new_path
+            conf.database = new_path    
             conf.modify()
             if "delete_database" in args and args["delete_database"]:
                 os.remove(old_path)
         elif k == "timer_ring":
-            if os.path.isfile(v) and v.endswith(".mp3"):
+            if not v:
+                current_app.config.update({"timer_sound_path": ""})
+                conf.timer_sound_path = ""
+                conf.modify()
+            elif os.path.isfile(v) and v.endswith(".mp3"):
                 current_app.config.update({"timer_sound_path": v})
                 conf.timer_sound_path = v
                 conf.modify()
