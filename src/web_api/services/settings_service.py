@@ -4,6 +4,7 @@ import os
 import shutil
 from flask import current_app, g
 from src.shared.config.conf import Config
+from src.shared.utils.posix_path import get_abspath
 
 def update_settings(args : dict, conf : Config):
     for k,v in args.items():
@@ -29,7 +30,7 @@ def update_settings(args : dict, conf : Config):
                 conf.timer_sound_path = ""
                 conf.modify()
             elif os.path.isfile(v) and v.endswith(".mp3"):
-                current_app.config.update({"timer_sound_path": v})
+                current_app.config.update({"timer_sound_path": get_abspath(v)})
                 conf.timer_sound_path = v
                 conf.modify()
             else:
