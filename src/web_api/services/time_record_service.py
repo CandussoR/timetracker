@@ -103,8 +103,9 @@ class TimeRecordService():
                 if tag_id is None:
                     raise ValueError("Guid doesn't exist.")
                 time_record.tag_id = tag_id
-        except KeyError:
-            print("Key Error, let's move on")
+        except KeyError as e:
+            # No tag_guid or task_guid to retrieve, going on with update.
+            pass
 
         match operation_type:
             case "ending" :     
