@@ -25,7 +25,7 @@ def create_app(args : list[str]):
 
     if "--api" in args:
         app = create_flask_app(conf)
-        app.run(debug=True)
+        app.run(port=63267, debug=True)
 
     else:
         start(conf, conf.database)
