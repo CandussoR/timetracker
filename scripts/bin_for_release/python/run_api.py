@@ -19,7 +19,7 @@ def create_app():
     conn.close()
 
     app = create_flask_app(conf)
-    app.run(port=63267, debug=True)
+    app.run(port=63267, debug=False)
         
 
 def validate_conf_path(filepath, is_test) :
