@@ -4,6 +4,7 @@
 __pycache__/
 archived/
 scripts/
+!scripts/bin_for_release/python
 *.db*
 .vscode/
 *conf.json
