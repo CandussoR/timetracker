@@ -1,0 +1,9 @@
+on:
+  workflow_dispatch:
+
+jobs:
+  print_env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show github.workspace
+        run: echo ${{ github.workspace }}
