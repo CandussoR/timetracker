@@ -7,3 +7,9 @@ jobs:
     steps:
       - name: Show github.workspace
         run: echo ${{ github.workspace }}
+
+      - uses: actions/checkout@v4
+
+      - name : show github.workspace
+        run: echo ${{ github.workspace }}
+
