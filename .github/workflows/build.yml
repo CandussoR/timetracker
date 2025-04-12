@@ -15,6 +15,7 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name : show github.workspace
-        run: echo ${{ github.workspace }}
+      - name : list another directory
+        run : ls
+        working-directory : ..
 
