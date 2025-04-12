@@ -7,16 +7,21 @@ on:
   workflow_dispatch:
 
 jobs:
+  install_python:
+
   print_env:
     runs-on: ubuntu-latest
     steps:
-      - name: Show github.workspace
-        run: echo ${{ github.workspace }}
-
       - name: Set up Python (if needed)
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name : install pip
+        run : python install pip
+
+      - name : install packages
+        run : pip install -r requirements.txt
 
       - uses: actions/checkout@v4
 
