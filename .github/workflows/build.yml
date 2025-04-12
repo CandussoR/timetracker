@@ -15,9 +15,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name : install pip
-        run : python install pip
-
       - name : install packages
         run : pip install -r requirements.txt
 
