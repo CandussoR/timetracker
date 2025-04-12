@@ -16,14 +16,13 @@ def main() -> None:
     arg = os.getenv("arg")
     test = os.getenv("test")
 
-    if not os.path.exists(DEST_PATH):
-        print("Destination doesn't exist, creating folder")
-        os.mkdir(DEST_PATH)
+    print("Going outside where we'll create the front")
+    os.chdir(DEST_PATH)
     
     print("cloning front")
-    subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git {DEST_PATH}', shell=True)
-    os.chdir(DEST_PATH)
-
+    subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git', shell=True)
+    os.chdir(os.path.join(DEST_PATH, 'timetracker_front'))
+    
     print("creating env")
     with open('.env', 'w') as fw:
         content = """VITE_APP_IP_DEV = "http://127.0.0.1:5000/"
