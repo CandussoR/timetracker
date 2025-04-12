@@ -13,9 +13,17 @@ jobs:
       - name: Show github.workspace
         run: echo ${{ github.workspace }}
 
+      - name: Set up Python (if needed)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - uses: actions/checkout@v4
 
-      - name : list another directory
+      - name : Execute build script
+        run: python scripts/build.py
+
+      - name : list two directories up
         run : ls
-        working-directory : ..
+        working-directory: ../..
 
