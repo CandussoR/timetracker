@@ -21,6 +21,14 @@ jobs:
       - name : checking into current dir
         uses: actions/checkout@v4
 
+      - name : clone front
+        run : git clone https://github.com/CandussoR/timetracker_front.git
+        working-directory: ..
+
+      - name : ls up dir
+        run: ls
+        working-directory : ..
+        
       - name : install packages
         run : pip install -r requirements.txt
 
