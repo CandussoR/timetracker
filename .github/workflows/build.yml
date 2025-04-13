@@ -24,6 +24,9 @@ jobs:
       - name : Execute build script
         run: python scripts/build/build_release.py
 
+      - name : list current dir
+        run : ls
+        
       - name : list two directories up
         run : ls
         working-directory: ../..

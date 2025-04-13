@@ -41,21 +41,21 @@ VITE_APP_VERSION = 0.9.0"""
 
     print(f"Creating gitattributes in copy project")
 
-    # attributes_path = os.path.abspath(os.path.join('.', '.gitattributes'))
-    # with open(attributes_path, 'w') as fw:
-    #     general = ".github/ export-ignore\ntests/ export-ignore\narchived export-ignore\nscripts export-ignore\n__pycache__/ export-ignore"
-    #     content_api = "\nsrc/tui export-ignore\ntui_requirements.txt export-ignore"
-    #     content_tui = "tests/ export-ignore\nsrc/web_api export-ignore\nrequirements.txt export-ignore"
-    #     fw.writelines(general)
-    #     fw.writelines(content_api if arg=='api' else content_tui)
+    attributes_path = os.path.abspath(os.path.join('.', '.gitattributes'))
+    with open(attributes_path, 'w') as fw:
+        general = ".github/ export-ignore\ntests/ export-ignore\narchived export-ignore\nscripts export-ignore\n__pycache__/ export-ignore"
+        content_api = "\nsrc/tui export-ignore\ntui_requirements.txt export-ignore"
+        content_tui = "tests/ export-ignore\nsrc/web_api export-ignore\nrequirements.txt export-ignore"
+        fw.writelines(general)
+        fw.writelines(content_api if arg=='api' else content_tui)
     
-    # try:
-    #     print("creating git archive")
-    #     ret_code = subprocess.call('git archive --format=tar.gz --worktree-attributes --output=backend.tar.gz HEAD', shell=True)
-    #     if not ret_code:
-    #         os.remove(attributes_path)
-    #     subprocess.call('mkdir backend')
-    #     subprocess.call('tar -xzf backend.tar.gz -C backend')
+    try:
+        print("creating git archive")
+        ret_code = subprocess.call('git archive --format=tar.gz --worktree-attributes --output=backend.tar.gz HEAD', shell=True)
+        if not ret_code:
+            os.remove(attributes_path)
+        subprocess.call('mkdir backend')
+        subprocess.call('tar -xzf backend.tar.gz -C backend')
         
     #     print("\tGetting platform target triple")
     #     command = 'powershell -Command "rustc -Vv | Select-String \'host:\' | ForEach-Object {($_.Line -split \' \')[1]}"'
