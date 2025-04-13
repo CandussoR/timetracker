@@ -7,6 +7,9 @@ ORIGINAL_ROOT = os.path.abspath('../../')
 DEST_PATH = os.path.abspath(os.path.join(CURR_FILE, '../../..'))
 PATH_PREFIX = '../'
 
+with open('log', 'a') as fw:
+    fw.write(f'CURR FILE : {CURR_FILE}, ORIGINAL_ROOT : {ORIGINAL_ROOT}, DEST_PATH : {DEST_PATH}, PATH_JOIN_TT_FRONT : {os.path.join(DEST_PATH, "timetracker_front")}')
+
 def remove_readonly(func, path, _):
     """Clear the readonly bit and reattempt the removal."""
     os.chmod(path, stat.S_IWRITE)
