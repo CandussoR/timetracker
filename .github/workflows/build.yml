@@ -18,15 +18,21 @@ jobs:
       - name : checking into current dir
         uses: actions/checkout@v4
 
+      - name : ls on checkout
+        run : ls -la
+
       - name : install packages
         run : pip install -r requirements.txt
 
       - name : Execute build script
         run: python scripts/build/build_release.py
 
+      - name : print currentdir
+        run : echo ${{ github.workspace }}
+        
       - name : list current dir
         run : ls
-        
+      
       - name : list two directories up
         run : ls
         working-directory: ../..
