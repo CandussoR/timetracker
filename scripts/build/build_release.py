@@ -3,8 +3,9 @@ import stat
 import subprocess
 
 CURR_FILE = os.path.abspath(__file__)
+CURR_DIR = os.path.dirname(__file__)
 ORIGINAL_ROOT = os.path.abspath('../../')
-DEST_PATH = os.path.abspath(os.path.join(CURR_FILE, '../../..'))
+DEST_PATH = os.path.abspath(os.path.join(CURR_DIR, '../../..'))
 PATH_PREFIX = '../'
 
 with open('log', 'a') as fw:
