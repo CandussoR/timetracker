@@ -31,6 +31,10 @@ jobs:
       - name : list current dir
         run : ls
 
+      - name : list script dir
+        run : ls
+        working-directory : scripts/build
+        
       - name : list one directory up
         run : ls -la ..
       
