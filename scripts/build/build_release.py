@@ -2,9 +2,9 @@ import os
 import stat
 import subprocess
 
-ORIGINAL_ROOT = os.path.abspath('../../')
-DEST_PATH = os.path.abspath('../../../')
 CURR_FILE = os.path.abspath(__file__)
+ORIGINAL_ROOT = os.path.abspath('../../')
+DEST_PATH = os.path.abspath(os.path.join(CURR_FILE, '../../..'))
 PATH_PREFIX = '../'
 
 def remove_readonly(func, path, _):
