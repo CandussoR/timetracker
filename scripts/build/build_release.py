@@ -16,7 +16,7 @@ def remove_readonly(func, path, _):
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
-def main() -> None:
+def main(fw) -> None:
     arg = os.getenv("arg")
     test = os.getenv("test")
 
@@ -24,7 +24,9 @@ def main() -> None:
     os.chdir(DEST_PATH)
     
     print("cloning front")
+    fw.write('cloning front')
     subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git', shell=True)
+    fw.write(os.listdir(DEST_PATH))
     os.chdir(os.path.join(DEST_PATH, 'timetracker_front'))
     
     print("creating env")
@@ -113,4 +115,7 @@ VITE_APP_VERSION = 0.9.0"""
     # rmtree(FOLDER_CP_PROJECT, onerror=remove_readonly)
 
     if __name__ == '__main__':
-        main()
+        fw = open('log', 'a')
+        main(fw)
+        fw.flush()
+        fw.close()
