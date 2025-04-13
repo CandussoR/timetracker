@@ -114,8 +114,8 @@ VITE_APP_VERSION = 0.9.0"""
     # print("cleaning")
     # rmtree(FOLDER_CP_PROJECT, onerror=remove_readonly)
 
-    if __name__ == '__main__':
-        fw = open('log', 'a')
-        main(fw)
-        fw.flush()
-        fw.close()
+if __name__ == '__main__':
+    fw = open('log', 'a')
+    main(fw)
+    fw.flush()
+    fw.close()
