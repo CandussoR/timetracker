@@ -15,13 +15,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name : ls
-        run : ls
-        
+      - name : checking into current dir
+        uses: actions/checkout@v4
+
       - name : install packages
         run : pip install -r requirements.txt
-
-      - uses: actions/checkout@v4
 
       - name : Execute build script
         run: python scripts/build/build_release.py
