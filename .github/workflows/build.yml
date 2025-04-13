@@ -15,11 +15,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name : check git version
+        run : git version
+        
       - name : checking into current dir
         uses: actions/checkout@v4
-
-      - name : ls on checkout
-        run : ls -la
 
       - name : install packages
         run : pip install -r requirements.txt
@@ -27,20 +27,14 @@ jobs:
       - name : Execute build script
         run: python build_release.py
         working-directory: scripts/build
-        
-      - name : list current dir
-        run : ls
-
-      - name : list script dir
-        run : ls
-        working-directory : scripts/build
 
       - name : cat log file
         run : cat log
         working-directory : scripts/build
         
-      - name : list one directory up
-        run : ls -la ..
+      - name : list one up dir
+        run : ls ..
+
       
       - name : list two directories up
         run : ls
