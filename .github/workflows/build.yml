@@ -25,10 +25,8 @@ jobs:
         run : pip install -r requirements.txt
 
       - name : Execute build script
-        run: python scripts/build/build_release.py
-
-      - name : print currentdir
-        run : echo ${{ github.workspace }}
+        run: python build_release.py
+        working-directory: scripts/build
         
       - name : list current dir
         run : ls
