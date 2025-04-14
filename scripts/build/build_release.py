@@ -100,18 +100,15 @@ VITE_APP_VERSION = 0.9.0"""
         os.remove('backend.tar.gz')
 
     print("moving executable")
-    tauri_path = os.path.join(DEST_PATH, 'src-tauri')
+    tauri_path = os.path.join(DEST_PATH, 'timetracker_front', 'src-tauri')
     tauri_bin_path = os.path.join(tauri_path, 'bin')
     if not (os.path.exists(tauri_bin_path)):
         os.mkdir(tauri_bin_path)
-    if os.path.isfile(f'{DEST_PATH}\\src-tauri\\bin\\timetracker-backend-{target_triple}.exe'):
-        os.remove(f'{DEST_PATH}\\src-tauri\\bin\\timetracker-backend-{target_triple}.exe')
-    shutil.copy2(f'./dist/timetracker-backend-{target_triple}.exe', f'{DEST_PATH}\\src-tauri\\bin\\')
+    shutil.copy2(f'./dist/timetracker-backend-{target_triple}.exe', tauri_bin_path)
     rmtree('dist')
     
     print('building exe')
     os.chdir(DEST_PATH)
-    # subprocess.call('npm run tauri build -- --features launch_binary --debug', shell=True)
     subprocess.call('npm run tauri build -- --features launch_binary', shell=True)
 
     print('binary created')
