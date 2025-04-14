@@ -66,9 +66,10 @@ VITE_APP_VERSION = 0.9.0"""
         print("\tGetting platform target triple")
         if sys.platform == 'win32':
             command = 'powershell -Command "rustc -Vv | Select-String \'host:\' | ForEach-Object {($_.Line -split \' \')[1]}"'
-        else :
+        else:
             command = "rustc -Vv | grep host | cut -f2 -d' '"
         target_triple = subprocess.run(command, shell=True, text=True, capture_output=True)
+        print(target_triple)
         if target_triple.returncode == 0:
             target_triple = target_triple.stdout.strip()
 
