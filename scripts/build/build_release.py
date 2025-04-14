@@ -20,7 +20,7 @@ def remove_readonly(func, path, _):
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
-def main(fw) -> None:
+def main() -> None:
     arg = os.getenv("arg")
     test = os.getenv("test")
 
@@ -28,7 +28,6 @@ def main(fw) -> None:
     os.chdir(DEST_PATH)
     
     print("cloning front")
-    fw.write('cloning front')
     subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git', shell=True)
     os.chdir(os.path.join(DEST_PATH, 'timetracker_front'))
     
@@ -49,9 +48,24 @@ VITE_APP_VERSION = 0.9.0"""
     os.chdir(ORIGINAL_ROOT)
     attributes_path = os.path.abspath(os.path.join('.', '.gitattributes'))
     with open(attributes_path, 'w') as fw:
-        general = ".github/ export-ignore\ntests/ export-ignore\narchived export-ignore\nscripts export-ignore\n__pycache__/ export-ignore"
-        content_api = "\nsrc/tui export-ignore\ntui_requirements.txt export-ignore"
-        content_tui = "tests/ export-ignore\nsrc/web_api export-ignore\nrequirements.txt export-ignore"
+        general = """\
+.github/ export-ignore
+tests/ export-ignore
+archived export-ignore
+scripts export-ignore
+__pycache__/ export-ignore
+"""
+
+        content_api = """\
+src/tui export-ignore
+tui_requirements.txt export-ignore
+"""
+
+        content_tui = """\
+tests/ export-ignore
+src/web_api export-ignore
+requirements.txt export-ignore
+"""
         fw.writelines(general)
         fw.writelines(content_api if arg=='api' else content_tui)
     
@@ -68,10 +82,13 @@ VITE_APP_VERSION = 0.9.0"""
             command = 'powershell -Command "rustc -Vv | Select-String \'host:\' | ForEach-Object {($_.Line -split \' \')[1]}"'
         else:
             command = "rustc -Vv | grep host | cut -f2 -d' '"
+        print(command)
         target_triple = subprocess.run(command, shell=True, text=True, capture_output=True)
         print(target_triple)
         if target_triple.returncode == 0:
             target_triple = target_triple.stdout.strip()
+        else:
+            raise RuntimeError(f"Failed to get target triple. stderr:\n{target_triple.stderr}")
 
         print("Replacing run.py")
         os.remove(os.path.join(ORIGINAL_ROOT, "backend", "run.py"))
@@ -115,7 +132,4 @@ VITE_APP_VERSION = 0.9.0"""
     print('binary created')
 
 if __name__ == '__main__':
-    fw = open('log', 'a')
-    main(fw)
-    fw.flush()
-    fw.close()
+    main()
