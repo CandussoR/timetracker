@@ -11,9 +11,6 @@ class Config:
         self.database = get_abspath(conf["database"])
         self.timer_sound_path = get_abspath(conf["timer_sound_path"]) if conf["timer_sound_path"] else ""
         self.log_file = get_abspath(conf["log_file"])
-        if is_tui:
-            self.flows = conf["flows"]
-
 
     def _load(self, filepath : str) -> dict:
 
