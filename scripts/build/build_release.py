@@ -69,43 +69,40 @@ requirements.txt export-ignore
         fw.writelines(general)
         fw.writelines(content_api if arg=='api' else content_tui)
     
-    try:
-        print("creating git archive")
-        ret_code = subprocess.call('git archive --format=tar.gz --worktree-attributes --output=backend.tar.gz HEAD', shell=True)
-        if not ret_code:
-            os.remove(attributes_path)
-        subprocess.call('mkdir backend')
-        subprocess.call('tar -xzf backend.tar.gz -C backend')
-        
-        print("\tGetting platform target triple")
-        if sys.platform == 'win32':
-            command = 'powershell -Command "rustc -Vv | Select-String \'host:\' | ForEach-Object {($_.Line -split \' \')[1]}"'
-        else:
-            command = "rustc -Vv | grep host | cut -f2 -d' '"
-        print(command)
-        target_triple = subprocess.run(command, shell=True, text=True, capture_output=True)
-        print(target_triple)
-        if target_triple.returncode == 0:
-            target_triple = target_triple.stdout.strip()
-        else:
-            raise RuntimeError(f"Failed to get target triple. stderr:\n{target_triple.stderr}")
+    print("creating git archive")
+    ret_code = subprocess.call('git archive --format=tar.gz --worktree-attributes --output=backend.tar.gz HEAD', shell=True)
+    if not ret_code:
+        os.remove(attributes_path)
+    subprocess.call('mkdir backend')
+    subprocess.call('tar -xzf backend.tar.gz -C backend')
+    
+    print("\tGetting platform target triple")
+    if sys.platform == 'win32':
+        command = 'powershell -Command "rustc -Vv | Select-String \'host:\' | ForEach-Object {($_.Line -split \' \')[1]}"'
+    else:
+        command = "rustc -Vv | grep host | cut -f2 -d' '"
+    print(command)
+    target_triple = subprocess.run(command, shell=True, text=True, capture_output=True)
+    print(target_triple)
+    if target_triple.returncode == 0:
+        target_triple = target_triple.stdout.strip()
+    else:
+        raise RuntimeError(f"Failed to get target triple. stderr:\n{target_triple.stderr}")
 
-        print("Replacing run.py")
-        os.remove(os.path.join(ORIGINAL_ROOT, "backend", "run.py"))
-        subprocess.call(f"cp {os.path.join(os.path.dirname(CURR_FILE), 'run_api.py')} {os.path.join(ORIGINAL_ROOT, 'backend', '')}")
-        os.rename(os.path.join(ORIGINAL_ROOT, 'backend', 'run_api.py'), os.path.join(ORIGINAL_ROOT, 'backend', 'run.py'))
-        
-        conf =  {"database": "./timer_data.db", 
-                 "timer_sound_path": "",
-                 "log_file": "./logs/logs.log",
-                }
-        with open(os.path.join(ORIGINAL_ROOT, "backend", "conf.json"), 'w') as fw:
-            json.dump(conf, fw)
-        os.remove('backend/conf_example.jsonc')
+    print("Replacing run.py")
+    os.remove(os.path.join(ORIGINAL_ROOT, "backend", "run.py"))
+    subprocess.call(f"cp {os.path.join(os.path.dirname(CURR_FILE), 'run_api.py')} {os.path.join(ORIGINAL_ROOT, 'backend', '')}")
+    os.rename(os.path.join(ORIGINAL_ROOT, 'backend', 'run_api.py'), os.path.join(ORIGINAL_ROOT, 'backend', 'run.py'))
+    
+    conf =  {"database": "./timer_data.db", 
+                "timer_sound_path": "",
+                "log_file": "./logs/logs.log",
+            }
+    with open(os.path.join(ORIGINAL_ROOT, "backend", "conf.json"), 'w') as fw:
+        json.dump(conf, fw)
+    os.remove('backend/conf_example.jsonc')
 
-        subprocess.call(f'pyinstaller --name timetracker-backend-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json;." backend/run.py')
-    except Exception as e:
-        print(f"Exception occured during the creation of the Python executable : {e}")
+    subprocess.call(f'pyinstaller --name timetracker-backend-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json;." backend/run.py')
 
     print("cleaning Python build files")
     if os.path.exists('./backend'):
