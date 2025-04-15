@@ -102,7 +102,8 @@ requirements.txt export-ignore
         json.dump(conf, fw)
     os.remove('backend/conf_example.jsonc')
 
-    subprocess.call(f'pyinstaller --name timetracker-backend-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json;." backend/run.py', shell=True)
+    sep = ';' if sys.platform == 'win32' else ':'
+    subprocess.call(f'pyinstaller --name timetracker-backend-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json{sep}." backend/run.py', shell=True)
 
     print("cleaning Python build files")
     if os.path.exists('./backend'):
