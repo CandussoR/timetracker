@@ -119,7 +119,7 @@ requirements.txt export-ignore
     tauri_bin_path = os.path.join(tauri_path, 'bin')
     if not (os.path.exists(tauri_bin_path)):
         os.mkdir(tauri_bin_path)
-    shutil.copy2(f'./dist/timetracker-backend-{target_triple}.exe', tauri_bin_path)
+    shutil.copy2(f'./dist/timetracker-backend-{target_triple}{".exe" if sys.platform == "win32" else ""}', tauri_bin_path)
     rmtree('dist')
     
     print('building exe')
