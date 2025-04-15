@@ -92,7 +92,9 @@ requirements.txt export-ignore
     print("Replacing run.py")
     os.remove(os.path.join(ORIGINAL_ROOT, "backend", "run.py"))
     subprocess.call('pwd', shell=True)
-    subprocess.call('ls -la', shell=True)
+    print(str(os.listdir()))
+    ls = subprocess.run('ls -la', shell=True, capture_output=True)
+    print(ls.stdout)
     subprocess.call(f"cp {os.path.join(os.path.dirname(CURR_FILE), 'run_api.py')} {os.path.join(ORIGINAL_ROOT, 'backend', '')}")
     os.rename(os.path.join(ORIGINAL_ROOT, 'backend', 'run_api.py'), os.path.join(ORIGINAL_ROOT, 'backend', 'run.py'))
     
