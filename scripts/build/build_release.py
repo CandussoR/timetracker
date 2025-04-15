@@ -73,8 +73,8 @@ requirements.txt export-ignore
     ret_code = subprocess.call('git archive --format=tar.gz --worktree-attributes --output=backend.tar.gz HEAD', shell=True)
     if not ret_code:
         os.remove(attributes_path)
-    subprocess.call('mkdir backend')
-    subprocess.call('tar -xzf backend.tar.gz -C backend')
+    subprocess.call('mkdir backend', shell=True)
+    subprocess.call('tar -xzf backend.tar.gz -C backend', shell=True)
     
     print("\tGetting platform target triple")
     if sys.platform == 'win32':
@@ -102,7 +102,7 @@ requirements.txt export-ignore
         json.dump(conf, fw)
     os.remove('backend/conf_example.jsonc')
 
-    subprocess.call(f'pyinstaller --name timetracker-backend-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json;." backend/run.py')
+    subprocess.call(f'pyinstaller --name timetracker-backend-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json;." backend/run.py', shell=True)
 
     print("cleaning Python build files")
     if os.path.exists('./backend'):
