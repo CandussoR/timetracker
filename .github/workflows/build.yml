@@ -38,6 +38,8 @@ jobs:
         run: python build_release.py
         working-directory: scripts/build
 
+      - uses: actions/checkout@v4
+
       - name : LS Build stuff
         run : ls
         working-directory : ../timetracker-front/src-tauri/release/bundle/nsis/*
