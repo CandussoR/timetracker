@@ -43,7 +43,7 @@ jobs:
         run: ls -la
         
       - name : Back to workspace
-        working-directory: ../${{github.workspace}}/timetracker-front/src-tauri/release/bundle/nsis
+        working-directory: ${{github.workspace}}/../timetracker-front/src-tauri/release/bundle/nsis
         run : cd
 
       - name : LS Build stuff
