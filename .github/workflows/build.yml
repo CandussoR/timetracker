@@ -38,15 +38,15 @@ jobs:
         run: python build_release.py
         working-directory: scripts/build
 
+      - name : list github workspace
+        working-directory: ${{github.workspace}}
+        run: ls -la
+        
       - name : Back to workspace
-        run : cd {{$github.workspace}}
-
-      - name : What's there ?
-        run : ls -la
+        working-directory: ${{ github.workspace }}/timetracker/timetracker-front/src-tauri/release/bundle/nsis
 
       - name : LS Build stuff
         run : ls
-        working-directory : ../timetracker-front/src-tauri/release/bundle/nsis/*
         
       - name : Create Release
         uses: softprops/action-gh-release@v2
