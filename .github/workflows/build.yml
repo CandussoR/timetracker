@@ -44,6 +44,7 @@ jobs:
         
       - name : Back to workspace
         working-directory: ${{ github.workspace }}/timetracker/timetracker-front/src-tauri/release/bundle/nsis
+        run : cd
 
       - name : LS Build stuff
         run : ls
