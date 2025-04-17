@@ -38,6 +38,10 @@ jobs:
         run: python build_release.py
         working-directory: scripts/build
 
+      - name : LS Build stuff
+        run : ls
+        working-directory : ../timetracker-front/src-tauri/release/bundle/nsis/*
+        
       - name : Create Release
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
