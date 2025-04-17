@@ -38,7 +38,11 @@ jobs:
         run: python build_release.py
         working-directory: scripts/build
 
-      - uses: actions/checkout@v4
+      - name : Back to workspace
+        run : cd {{$github.workspace}}
+
+      - name : What's there ?
+        run : ls -la
 
       - name : LS Build stuff
         run : ls
