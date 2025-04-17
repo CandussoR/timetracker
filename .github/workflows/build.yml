@@ -42,12 +42,12 @@ jobs:
         working-directory: ${{github.workspace}}
         run: ls -la
         
-      - name : Back to workspace
-        working-directory: ${{github.workspace}}/../timetracker-front/src-tauri/release/bundle/nsis
-        run : cd
-
-      - name : LS Build stuff
-        run : ls
+      - name: Go to NSIS bundle dir and list files
+        run: |
+          ls ${{github.workspace}}
+          ls ${{ github.workspace }}/..
+          ls -la ${{ github.workspace }}/../timetracker-front/src-tauri/release/bundle/nsis
+          
         
       - name : Create Release
         uses: softprops/action-gh-release@v2
