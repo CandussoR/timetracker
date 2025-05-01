@@ -43,13 +43,13 @@ class SqliteTimeRecordRepository():
         elif "month" in keys:
             parameters.append(f"strftime('%Y-%m', date) = :month")
 
-        if "task" in keys :
+        if set(["task", "subtask"]).issubset(keys):
+            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
+        elif "task" in keys :
             if not "subtask" in keys:
                 parameters.append("tasks.task_name = (:task)")
             elif conditions["subtask"] == "None":
                 parameters.append("tasks.task_name = (:task) AND tasks.subtask IS NULL")
-        elif set(["task", "subtask"]).issubset(keys):
-            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
             
         if "tag" in keys:
             parameters.append("tags.tag = (:tag)")
@@ -93,14 +93,13 @@ class SqliteTimeRecordRepository():
         elif "month" in keys:
             parameters.append(f"strftime('%Y-%m', date) = :month")
 
-        if "task" in keys :
+        if set(["task", "subtask"]).issubset(keys):
+            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
+        elif "task" in keys :
             if not "subtask" in keys:
                 parameters.append("tasks.task_name = (:task)")
             elif conditions["subtask"] == "None":
                 parameters.append("tasks.task_name = (:task) AND tasks.subtask IS NULL")
-        
-        elif set(["task", "subtask"]).issubset(keys):
-            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
             
         if "tag" in keys:
             parameters.append("tags.tag = (:tag)")
