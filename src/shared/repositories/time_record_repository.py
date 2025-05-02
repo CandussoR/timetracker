@@ -15,7 +15,7 @@ class SqliteTimeRecordRepository():
 
 
     def get_first_date(self) -> tuple:
-        return self.connexion.execute('SELECT date FROM timer_data LIMIT 1;').fetchone()
+        return self.connexion.execute('SELECT DISTINCT(date) FROM timer_data ORDER BY date LIMIT 1;').fetchone()
 
 
     def get(self, guid : str) -> tuple:
