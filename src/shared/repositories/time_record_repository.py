@@ -14,6 +14,10 @@ class SqliteTimeRecordRepository():
         self.connexion = connexion if connexion is not None else connect(db_name)
 
 
+    def get_first_date(self) -> tuple:
+        return self.connexion.execute('SELECT date FROM timer_data LIMIT 1;').fetchone()
+
+
     def get(self, guid : str) -> tuple:
         query = '''SELECT td.guid,
                           tasks.task_name,
