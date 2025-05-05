@@ -41,16 +41,16 @@ jobs:
       - name : list github workspace
         working-directory: ${{github.workspace}}
         run: ls -la
+
+      - name: Listing one dir up
+        working-directory: ${{ github.workspace }}/..
+        run: ls -la 
         
-      - name: Go to NSIS bundle dir and list files
-        run: |
-          ls ${{github.workspace}}
-          ls ${{ github.workspace }}/..
-          ls -la /home/runner/work/timetracker/timetracker-front/src-tauri/release/bundle/nsis
-          
+      - name: list NSIS bundle dir files
+        run: ls -la /home/runner/work/timetracker-front/src-tauri/release/bundle/nsis
         
-      - name : Create Release
-        uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
-        with:
-          files: ../timetracker-front/src-tauri/release/bundle/nsis/*
+      #- name : Create Release
+       # uses: softprops/action-gh-release@v2
+        #if: github.ref_type == 'tag'
+        #with:
+         # files: ../timetracker-front/src-tauri/release/bundle/nsis/*
