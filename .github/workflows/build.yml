@@ -53,7 +53,7 @@ jobs:
         run: ls -la /home/runner/work/timetracker
         
       - name: list NSIS bundle dir files
-        run: ls -la /home/runner/work/timetracker/timetracker-front/src-tauri/release/bundle/nsis
+        run: ls -Rla /home/runner/work/timetracker/timetracker-front/
         
       #- name : Create Release
        # uses: softprops/action-gh-release@v2
