@@ -39,6 +39,7 @@ def task_string_input(subtask : bool = False) -> str:
             
 
 def parse_input(task_input : str) -> Task:
+    task_input = task_input.strip()
     if re.search(r'\W', task_input):
         task, subtask = re.split(r'\W', task_input, 1)
         return Task(task_name = task, subtask = subtask)    

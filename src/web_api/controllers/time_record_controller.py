@@ -5,6 +5,16 @@ from src.web_api.services.time_record_service import TimeRecordService
 
 time_records_blueprint = Blueprint("time_records", __name__)
 
+
+@time_records_blueprint.get('/time_records/first_record_date')
+def get_first_date():
+    service = TimeRecordService()
+    try:
+        return service.get_first_date()
+    except Exception as e:
+        current_app.logger.error(format_exc())
+        return str(e), 500
+
 @time_records_blueprint.get("/time_records/<guid>")
 def get(guid : str):
     service = TimeRecordService()

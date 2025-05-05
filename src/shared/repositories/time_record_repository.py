@@ -14,6 +14,10 @@ class SqliteTimeRecordRepository():
         self.connexion = connexion if connexion is not None else connect(db_name)
 
 
+    def get_first_date(self) -> tuple:
+        return self.connexion.execute('SELECT DISTINCT(date) FROM timer_data ORDER BY date LIMIT 1;').fetchone()
+
+
     def get(self, guid : str) -> tuple:
         query = '''SELECT td.guid,
                           tasks.task_name,
@@ -43,13 +47,13 @@ class SqliteTimeRecordRepository():
         elif "month" in keys:
             parameters.append(f"strftime('%Y-%m', date) = :month")
 
-        if "task" in keys :
+        if set(["task", "subtask"]).issubset(keys):
+            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
+        elif "task" in keys :
             if not "subtask" in keys:
                 parameters.append("tasks.task_name = (:task)")
             elif conditions["subtask"] == "None":
                 parameters.append("tasks.task_name = (:task) AND tasks.subtask IS NULL")
-        elif set(["task", "subtask"]).issubset(keys):
-            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
             
         if "tag" in keys:
             parameters.append("tags.tag = (:tag)")
@@ -93,14 +97,13 @@ class SqliteTimeRecordRepository():
         elif "month" in keys:
             parameters.append(f"strftime('%Y-%m', date) = :month")
 
-        if "task" in keys :
+        if set(["task", "subtask"]).issubset(keys):
+            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
+        elif "task" in keys :
             if not "subtask" in keys:
                 parameters.append("tasks.task_name = (:task)")
             elif conditions["subtask"] == "None":
                 parameters.append("tasks.task_name = (:task) AND tasks.subtask IS NULL")
-        
-        elif set(["task", "subtask"]).issubset(keys):
-            parameters.append("tasks.task_name = (:task) AND tasks.subtask = (:subtask)")
             
         if "tag" in keys:
             parameters.append("tags.tag = (:tag)")

@@ -20,6 +20,10 @@ class TimeRecordService():
         self.repo = SqliteTimeRecordRepository(self.connexion)
     
 
+    def get_first_date(self) -> str:
+        date, = self.repo.get_first_date();
+        return date;
+
     def get(self, guid : str) -> dict:
         data = self.repo.get(guid)
         if data is None:
