@@ -45,6 +45,12 @@ jobs:
       - name: Listing one dir up
         working-directory: ${{ github.workspace }}/..
         run: ls -la 
+
+      -name : listing /home/runner/work/
+        run: ls -la /home/runner/work
+
+      - name : listing /home/runner/work/timetracker
+        run: ls -la /home/runner/work/timetracker
         
       - name: list NSIS bundle dir files
         run: ls -la /home/runner/work/timetracker-front/src-tauri/release/bundle/nsis
