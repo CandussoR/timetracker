@@ -46,7 +46,7 @@ jobs:
         run: |
           ls ${{github.workspace}}
           ls ${{ github.workspace }}/..
-          ls -la ${{ github.workspace }}/../timetracker-front/src-tauri/release/bundle/nsis
+          ls -la /home/runner/work/timetracker/timetracker/timetracker-front/src-tauri/release/bundle/nsis
           
         
       - name : Create Release
