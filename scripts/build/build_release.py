@@ -24,11 +24,14 @@ def main() -> None:
     arg = os.getenv("arg")
     test = os.getenv("test")
 
+    print(os.listdir('.'))
     print("Going outside where we'll create the front")
     os.chdir(DEST_PATH)
+    print(os.listdir('.'))
     
     print("cloning front")
-    subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git {DEST_PATH}', shell=True)
+    subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git', shell=True)
+    print(os.listdir('.'))
     os.chdir(os.path.join(DEST_PATH, 'timetracker_front'))
     
     print("creating env")
