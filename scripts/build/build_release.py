@@ -28,7 +28,7 @@ def main() -> None:
     os.chdir(DEST_PATH)
     
     print("cloning front")
-    subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git', shell=True)
+    subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git {DEST_PATH}', shell=True)
     os.chdir(os.path.join(DEST_PATH, 'timetracker_front'))
     
     print("creating env")
