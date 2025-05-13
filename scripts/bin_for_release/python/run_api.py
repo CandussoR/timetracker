@@ -1,11 +1,13 @@
 import subprocess
 import os
+import sys
 from src.shared.config.conf import Config
 import src.shared.database.sqlite_db as db
 from src.web_api.factory import create_flask_app
 
 def create_app():
-    conf_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "conf.json"))
+    # Conf path, created by Tauri
+    conf_path = os.path.join(os.path.dirname(sys.executable), "resources", "conf.json")
  
     conf = Config(conf_path)
 

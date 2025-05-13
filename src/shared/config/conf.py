@@ -12,6 +12,7 @@ class Config:
         self.timer_sound_path = get_abspath(conf["timer_sound_path"]) if conf["timer_sound_path"] else ""
         self.log_file = get_abspath(conf["log_file"])
 
+
     def _load(self, filepath : str) -> dict:
 
         with open(filepath, 'r') as fr:
