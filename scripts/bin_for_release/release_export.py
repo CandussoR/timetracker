@@ -82,7 +82,7 @@ def main(dest_path : str, arg: Literal['api', 'tui'], test : bool) -> None:
         else:
             subprocess.call(f"cp {os.path.join(os.path.dirname(CURR_FILE), 'python', 'run_api.py')} {os.path.join(CP_PROJECT, 'backend', '')}")
         print(os.listdir(os.path.join(CP_PROJECT, 'backend', '')))
-        os.rename(os.path.join(CP_PROJECT, 'backend', 'run_api_test.py' if test else 'run_api.test'), os.path.join(CP_PROJECT, 'backend', 'run.py'))
+        os.rename(os.path.join(CP_PROJECT, 'backend', 'run_api_test.py' if test else 'run_api.py'), os.path.join(CP_PROJECT, 'backend', 'run.py'))
         
         conf =  {"database": "./timer_data.db", 
                  "timer_sound_path": "",
@@ -94,6 +94,7 @@ def main(dest_path : str, arg: Literal['api', 'tui'], test : bool) -> None:
 
         subprocess.call(f'C:/Users/romain/.python-venv/timetracker/Scripts/pyinstaller.exe --name timetracker-backend-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json;." backend/run.py')
         # subprocess.call(f'C:/Users/romain/.python-venv/timetracker/Scripts/pyinstaller.exe --name timetracker-backend-{target_triple} --hidden-import=flask --add-data "backend/conf.json;." backend/run.py')
+        print(os.listdir(os.path.join(CP_PROJECT, 'backend', 'dist')))
     except Exception as e:
         print(f"Exception occured during the creation of the Python executable : {e}")
 
