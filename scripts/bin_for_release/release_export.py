@@ -128,7 +128,7 @@ def main(dest_path : str, arg: Literal['api', 'tui'], test : bool) -> None:
 if __name__ == '__main__':
     import sys
     test = False
-    dest_path, args = sys.argv[1:]
+    dest_path, *args = sys.argv[1:]
     if args[0] not in ('api', 'tui'):
         raise ValueError(f"Arg can only be either 'api' or 'tui' : got {args[0]}.")
     if args[1] and args[1] == '--test':
