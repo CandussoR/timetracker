@@ -18,29 +18,29 @@ def remove_readonly(func, path, _):
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
-def main(dest_path : str, arg: Literal['api', 'tui'], test : bool) -> None:
-#     if not os.path.exists(dest_path):
-#         print("Destination doesn't exist, creating folder")
-#         os.mkdir(dest_path)
+def main(dest_path : str, arg: Literal['api', 'tui'], dev : bool) -> None:
+    if not os.path.exists(dest_path):
+        print("Destination doesn't exist, creating folder")
+        os.mkdir(dest_path)
     
-#     print("cloning front")
-#     subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git {dest_path}', shell=True)
-#     os.chdir(dest_path)
+    print("cloning front")
+    subprocess.call(f'git clone https://github.com/CandussoR/timetracker_front.git {dest_path}', shell=True)
+    os.chdir(dest_path)
 
-#     print("creating env")
-#     with open('.env', 'w') as fw:
-#         content = """VITE_APP_IP_DEV = "http://127.0.0.1:5000/"
-# VITE_APP_IP_PROD = "http://127.0.0.1:63267/"
-# VITE_APP_RING = /timer_end.mp3
-# VITE_APP_VERSION = 0.9.0"""
-#         fw.writelines(content)
+    print("creating env")
+    with open('.env', 'w') as fw:
+        content = """VITE_APP_IP_DEV = "http://127.0.0.1:5000/"
+VITE_APP_IP_PROD = "http://127.0.0.1:63267/"
+VITE_APP_RING = /timer_end.mp3
+VITE_APP_VERSION = 1.0.0"""
+        fw.writelines(content)
 
-#     print("installing npm packages and tauri plugins")
-#     subprocess.call('npm install', shell=True)
-#     subprocess.call("npm run tauri add shell", shell=True)
-#     subprocess.call("npm run tauri add dialog", shell=True)
+    print("installing npm packages and tauri plugins")
+    subprocess.call('npm install', shell=True)
+    subprocess.call("npm run tauri add shell", shell=True)
+    subprocess.call("npm run tauri add dialog", shell=True)
 
-#     assert os.path.exists('src-tauri'), "No tauri path"
+    assert os.path.exists('src-tauri'), "No tauri path"
 
     print(f"Copying this project into {FOLDER_CP_PROJECT}")
     if os.path.exists(FOLDER_CP_PROJECT):
@@ -77,14 +77,12 @@ def main(dest_path : str, arg: Literal['api', 'tui'], test : bool) -> None:
 
         print("Replacing run.py")
         os.remove(os.path.join(CP_PROJECT, "backend", "run.py"))
-        print(os.path.join(os.path.dirname(CURR_FILE), 'python', 'run_api.py'))
-        if test :
+        if dev :
             subprocess.call(f"cp {os.path.join(os.path.dirname(CURR_FILE), 'python', 'run_api_dev.py')} {os.path.join(CP_PROJECT, 'backend', '')}")
         else:
             subprocess.call(f"cp {os.path.join(os.path.dirname(CURR_FILE), 'python', 'run_api.py')} {os.path.join(CP_PROJECT, 'backend', '')}")
-        print(os.listdir(os.path.join(CP_PROJECT, 'backend', '')))
         
-        os.rename(os.path.join(CP_PROJECT, 'backend', 'run_api_dev.py' if test else 'run_api.py'), os.path.join(CP_PROJECT, 'backend', 'run.py'))
+        os.rename(os.path.join(CP_PROJECT, 'backend', 'run_api_dev.py' if dev else 'run_api.py'), os.path.join(CP_PROJECT, 'backend', 'run.py'))
         
         conf =  {"database": "./timer_data.db", 
                  "timer_sound_path": "",
@@ -94,9 +92,10 @@ def main(dest_path : str, arg: Literal['api', 'tui'], test : bool) -> None:
             json.dump(conf, fw)
         os.remove('backend/conf_example.jsonc')
 
-        subprocess.call(f'C:/Users/romain/.python-venv/timetracker/Scripts/pyinstaller.exe --name timetracker-backend-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json;." backend/run.py')
-        # subprocess.call(f'C:/Users/romain/.python-venv/timetracker/Scripts/pyinstaller.exe --name timetracker-backend-{target_triple} --hidden-import=flask --add-data "backend/conf.json;." backend/run.py')
-        print(os.listdir(os.path.join(CP_PROJECT, 'backend', 'dist')))
+        if dev:
+            subprocess.call(f'C:/Users/romain/.python-venv/timetracker/Scripts/pyinstaller.exe --name timetracker-backend-dev-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json;." backend/run.py')
+        else :
+            subprocess.call(f'C:/Users/romain/.python-venv/timetracker/Scripts/pyinstaller.exe --name timetracker-backend-{target_triple} --onefile --noconsole --hidden-import=flask --add-data "backend/conf.json;." backend/run.py')
     except Exception as e:
         print(f"Exception occured during the creation of the Python executable : {e}")
 
@@ -115,15 +114,23 @@ def main(dest_path : str, arg: Literal['api', 'tui'], test : bool) -> None:
     tauri_bin_path = os.path.join(tauri_path, 'bin')
     if not (os.path.exists(tauri_bin_path)):
         os.mkdir(tauri_bin_path)
-    if os.path.isfile(f'{dest_path}\\src-tauri\\bin\\timetracker-backend-{target_triple}.exe'):
-        os.remove(f'{dest_path}\\src-tauri\\bin\\timetracker-backend-{target_triple}.exe')
-    shutil.copy2(f'./dist/timetracker-backend-{target_triple}.exe', f'{dest_path}\\src-tauri\\bin\\')
+    # Deleting previous version of sidecar if any
+    if dev :
+        if os.path.isfile(f'{dest_path}\\src-tauri\\bin\\timetracker-backend-dev-{target_triple}.exe'):
+            os.remove(f'{dest_path}\\src-tauri\\bin\\timetracker-backend-dev-{target_triple}.exe')
+    else:
+        if os.path.isfile(f'{dest_path}\\src-tauri\\bin\\timetracker-backend-{target_triple}.exe'):
+            os.remove(f'{dest_path}\\src-tauri\\bin\\timetracker-backend-{target_triple}.exe')
+    # Copying new sidecar version
+    if dev :
+        shutil.copy2(f'./dist/timetracker-backend-dev-{target_triple}.exe', f'{dest_path}\\src-tauri\\bin\\')
+    else:
+        shutil.copy2(f'./dist/timetracker-backend-{target_triple}.exe', f'{dest_path}\\src-tauri\\bin\\')
     rmtree('dist')
     
-    # print('building exe')
+    print('building exe')
     os.chdir(dest_path)
-    # # subprocess.call('npm run tauri build -- --features launch_binary --debug', shell=True)
-    # subprocess.call('npm run tauri build -- --features launch_binary', shell=True)
+    subprocess.call('npm run tauri build', shell=True)
 
     print("cleaning")
     rmtree(FOLDER_CP_PROJECT, onerror=remove_readonly)
@@ -134,7 +141,7 @@ if __name__ == '__main__':
     dest_path, *args = sys.argv[1:]
     if args[0] not in ('api', 'tui'):
         raise ValueError(f"Arg can only be either 'api' or 'tui' : got {args[0]}.")
-    if args[1] and args[1] == '--test':
+    if len(args) > 1 and args[1] and args[1] == '--test':
         test = True
     main(dest_path, args[0], test)
     
