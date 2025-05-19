@@ -68,6 +68,7 @@ def main(dest_path : str, arg: Literal['api', 'tui'], test : bool) -> None:
         subprocess.call('mkdir backend')
         subprocess.call('tar -xzf backend.tar.gz -C backend')
         assert os.path.exists(os.path.join(CP_PROJECT, 'backend')), "Backend doesn't exists"
+
         print("\tGetting platform target triple")
         command = 'powershell -Command "rustc -Vv | Select-String \'host:\' | ForEach-Object {($_.Line -split \' \')[1]}"'
         target_triple = subprocess.run(command, shell=True, text=True, capture_output=True)
@@ -78,11 +79,12 @@ def main(dest_path : str, arg: Literal['api', 'tui'], test : bool) -> None:
         os.remove(os.path.join(CP_PROJECT, "backend", "run.py"))
         print(os.path.join(os.path.dirname(CURR_FILE), 'python', 'run_api.py'))
         if test :
-            subprocess.call(f"cp {os.path.join(os.path.dirname(CURR_FILE), 'python', 'run_api_test.py')} {os.path.join(CP_PROJECT, 'backend', '')}")
+            subprocess.call(f"cp {os.path.join(os.path.dirname(CURR_FILE), 'python', 'run_api_dev.py')} {os.path.join(CP_PROJECT, 'backend', '')}")
         else:
             subprocess.call(f"cp {os.path.join(os.path.dirname(CURR_FILE), 'python', 'run_api.py')} {os.path.join(CP_PROJECT, 'backend', '')}")
         print(os.listdir(os.path.join(CP_PROJECT, 'backend', '')))
-        os.rename(os.path.join(CP_PROJECT, 'backend', 'run_api_test.py' if test else 'run_api.py'), os.path.join(CP_PROJECT, 'backend', 'run.py'))
+        
+        os.rename(os.path.join(CP_PROJECT, 'backend', 'run_api_dev.py' if test else 'run_api.py'), os.path.join(CP_PROJECT, 'backend', 'run.py'))
         
         conf =  {"database": "./timer_data.db", 
                  "timer_sound_path": "",
