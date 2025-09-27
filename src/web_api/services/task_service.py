@@ -18,6 +18,12 @@ class TaskService():
         return [Task(*row) for row in self.repo.get_tasks()]
     
 
+    def is_used(self, guid : str):
+        UlidSchema().load({"guid" : guid})
+        is_used = self.repo.is_used(guid)
+        return { "isUsed" : True if is_used else False }
+
+
     def post(self, data : dict):
         schema = TaskSchema().load(data)
         task = Task().from_dict(schema)
@@ -37,9 +43,8 @@ class TaskService():
         return TaskSchema().dump(Task(*updated))
     
 
-    def delete(self, guid : dict):
+    def delete(self, guid : str):
         UlidSchema().load({"guid" : guid})
         self.repo.delete_task(guid)
         self.connexion.commit()
-        # Update SQLITE_SEQUENCE ?
         return "Successfully deleted."

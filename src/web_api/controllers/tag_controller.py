@@ -32,6 +32,21 @@ def get_tag(guid : str):
         return str(e), 500
 
 
+@tag_blueprint.route("/tag/used/<guid>", methods=["GET"])
+def is_task_used(guid : str):
+    service = TagService()
+    try:
+        isUsed = service.is_used(guid)
+        return isUsed, 200
+    except ValidationError as e:
+        return str(e), 400
+    except TypeError:
+        return "Task guid doesn't exist.", 404
+    except Exception as e:
+        current_app.logger.error(format_exc())
+        return str(e), 500
+    
+    
 @tag_blueprint.route("/tag", methods=["POST"])
 def create_tag():
     try:

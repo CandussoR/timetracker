@@ -47,6 +47,10 @@ class SqliteTaskRepository():
 
     def delete_task(self, guid : str) :
         return self.connexion.execute('DELETE FROM tasks WHERE guid=(?)', [guid])
+    
+    def is_used(self, guid : str) :
+        task_id = self.get_id_from_guid(guid)
+        return self.connexion.execute("SELECT id FROM timer_data WHERE task_id = (?) LIMIT 1;", [task_id]).fetchone()
 
 
 if __name__ == '__main__':

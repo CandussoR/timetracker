@@ -25,6 +25,12 @@ class TagService():
         if retrieved is None:
             raise ValueError("Ressource not found.")
         return TagSchema().dump(Tag(*retrieved))
+    
+    
+    def is_used(self, guid : str):
+        UlidSchema().load({"guid" : guid})
+        is_used = self.repo.is_used(guid)
+        return { "isUsed" : True if is_used else False }
 
 
     def new(self, data : dict):

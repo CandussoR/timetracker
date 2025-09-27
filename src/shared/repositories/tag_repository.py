@@ -34,21 +34,16 @@ class SqliteTagRepository():
 
     def delete(self, guid : str) :
         self.connexion.execute("DELETE FROM tags WHERE guid = :guid", [guid])
-    
-
-    # TODO : Modify the interface
-    # def retrieve_tag_id(self, tag : str) -> int:
-    #     try:
-    #         return self.check_id_existence(tag)[0]
-    #     except TypeError:
-    #         # Interface element : get this out of here
-    #         print("The tag doesn't exist yet. Adding it...")
-    #         return self.insert_new_tag(tag)
 
 
     def return_tag_id_if_exists(self, tag : str) -> int:
         '''Only used in the Terminal User Interface.
             Returns an id, or throws a TypeError.'''
         return self.connexion.execute('SELECT id FROM tags WHERE tag=(?);', [tag]).fetchone()[0]
+    
+
+    def is_used(self, guid : str) :
+        task_id = self.get_id_from_guid(guid)
+        return self.connexion.execute("SELECT id FROM timer_data WHERE task_id = (?) LIMIT 1;", [task_id]).fetchone()
 
 

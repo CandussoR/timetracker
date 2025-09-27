@@ -45,6 +45,20 @@ def update_task():
         return str(e), 500
 
 
+@tasks_blueprint.route("/task/<guid>", methods=["GET"])
+def is_task_used(guid : str):
+    service = TaskService()
+    try:
+        isUsed = service.is_used(guid)
+        return isUsed, 200
+    except ValidationError as e:
+        return str(e), 400
+    except TypeError:
+        return "Task guid doesn't exist.", 404
+    except Exception as e:
+        current_app.logger.error(format_exc())
+        return str(e), 500
+
 @tasks_blueprint.route("/task/<guid>", methods=["DELETE"])
 def delete_task(guid : str):
     service = TaskService()
