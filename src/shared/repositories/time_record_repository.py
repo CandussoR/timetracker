@@ -1,6 +1,6 @@
 from sqlite3 import connect
 from sqlite3.dbapi2 import Connection
-from typing import Optional
+from typing import Literal, Optional
 
 from flask import g
 from src.shared.models.time_record import TimeRecordInput
@@ -184,3 +184,8 @@ class SqliteTimeRecordRepository():
                             WHERE guid = (:guid);'''
         self.connexion.execute(query, record.__dict__)
         self.update_elapsed_time(record)
+
+    
+    def repurpose(self, tag_or_task : Literal['tag', 'task'], old_id : int, new_id : int):
+        field = "tag_id" if tag_or_task == 'tag' else "task_id"
+        self.connexion.execute(f"UPDATE timer_data SET {field} = ? WHERE {field} = ?", [new_id, old_id])

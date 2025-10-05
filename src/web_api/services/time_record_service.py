@@ -7,7 +7,8 @@ from src.shared.models.time_record import TimeRecordInput, TimeRecordResource
 from src.shared.repositories.tag_repository import SqliteTagRepository
 from src.shared.repositories.task_repository import SqliteTaskRepository
 from src.shared.repositories.time_record_repository import SqliteTimeRecordRepository
-from src.web_api.schemas.time_record_schema import TimeRecordBeginningRequestSchema, TimeRecordEndingRequestSchema, TimeRecordRequestSchema, TimeRecordSchema
+from src.web_api.schemas.task_schema import UlidSchema
+from src.web_api.schemas.time_record_schema import TimeRecordBeginningRequestSchema, TimeRecordEndingRequestSchema, TimeRecordRepurposeSchema, TimeRecordRequestSchema, TimeRecordSchema
 import src.shared.database.sqlite_db as sqlite_db
 from werkzeug.datastructures import ImmutableMultiDict
 
@@ -18,7 +19,6 @@ class TimeRecordService():
         else :
             self.connexion = connexion
         self.repo = SqliteTimeRecordRepository(self.connexion)
-    
 
     def get_first_date(self) -> str:
         date, = self.repo.get_first_date();
@@ -31,7 +31,7 @@ class TimeRecordService():
         else:
             tr = TimeRecordResource(*data)
             return TimeRecordSchema().dump(tr)
-    
+
     def get_by(self, params : dict):
         '''Receives an ImmutableMultiDict in parameter and returns a list of TimeRecords.'''
         # Converting ImmutableMultiDict to dict
@@ -56,7 +56,7 @@ class TimeRecordService():
 
     def post(self, time_record_type : str, data : dict) -> dict:
         # Forced to use unknown=EXLUDE for Schema validation
-        # because it receives task and tag guids and then try to find their IDs. 
+        # because it receives task and tag guids and then try to find their IDs.
         assert self.connexion != None    
         time_record = TimeRecordInput()
 
@@ -76,7 +76,7 @@ class TimeRecordService():
             pass
 
         match time_record_type:
-            case "old" :
+            case "old":
                 TimeRecordRequestSchema().load(data, unknown=EXCLUDE)
                 time_record.from_dict(data)
                 self.repo.insert_old_timer(time_record)
@@ -88,9 +88,8 @@ class TimeRecordService():
                 self.connexion.commit()
             case _:
                 raise ValidationError("Invalid type.")
-        
+
         return self.get(time_record.guid)
-    
 
     def update(self, operation_type : str, data : dict) -> dict:
         time_record = TimeRecordInput()
@@ -112,7 +111,7 @@ class TimeRecordService():
             pass
 
         match operation_type:
-            case "ending" :     
+            case "ending":
                 TimeRecordEndingRequestSchema().load(data, unknown=EXCLUDE)
                 time_record.from_dict(data)
                 self.repo.update_row_at_ending(time_record)
@@ -122,12 +121,26 @@ class TimeRecordService():
                 time_record.from_dict(data)
                 self.repo.update_timer(time_record)
                 self.repo.update_elapsed_time(time_record)
-                self.connexion.commit()
+                self.connexion.commit()                
 
             case _:
                 raise ValidationError("Invalid type.")
         return self.get(time_record.guid)
-    
+
+    def repurpose(self, data : dict):
+        TimeRecordRepurposeSchema().load(data)
+
+        if data["field"] == 'tag':
+            repo = SqliteTagRepository(self.connexion)
+        elif data["field"] == 'task':
+            repo = SqliteTaskRepository(self.connexion)
+
+        self.repo.repurpose(
+            data["field"],
+            repo.get_id_from_guid(data["old_guid"]),
+            repo.get_id_from_guid(data["new_guid"]),
+        )
+
     def update_ending_to_now(self):
         self.repo.update_last_row_ending(datetime.datetime.now())
         self.connexion.commit()

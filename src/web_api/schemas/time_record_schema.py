@@ -30,3 +30,8 @@ class TimeRecordSchema(Schema):
     time_elapsed = fields.Integer(attribute='time_elapsed')
     tag = fields.String(attribute='tag', required=False, allow_none=True)
     log = fields.String(attribute='log', required=False, allow_none=True)
+
+class TimeRecordRepurposeSchema(Schema):
+    field = fields.String(required=True, validate=validate.OneOf(['tag','task']))
+    old_guid = fields.String(required=True, validate=validate.Length(equal=26), attribute='old_guid')
+    new_guid = fields.String(required=True, validate=validate.Length(equal=26), attribute='new_guid')
