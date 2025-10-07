@@ -17,6 +17,7 @@ def get_first_date():
 
 @time_records_blueprint.get("/time_records/<guid>")
 def get(guid : str):
+    print("you wanted to get something??")
     service = TimeRecordService()
     try:
         return service.get(guid)
@@ -53,13 +54,17 @@ def create_time_record():
         return str(e), 500
 
 @time_records_blueprint.route("/time_records", methods=["PUT"])
-def update_time_record():
+def sth():
     req = request.get_json()
     operation_type = req["type"]
     data = req["data"]
     service = TimeRecordService()
     try:
-        return service.update(operation_type, data)
+        if operation_type == "repurpose":
+            return service.repurpose(data), 200
+        return service.update(operation_type, data), 200
+    except ValidationError as e:
+        return str(e), 400
     except Exception as e:
         current_app.logger.error(format_exc())
         return str(e), 400

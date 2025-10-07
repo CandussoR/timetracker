@@ -1,7 +1,7 @@
 import datetime
 from sqlite3 import Connection
 from typing import Optional
-from flask import g
+from flask import current_app, g
 from marshmallow import EXCLUDE, ValidationError
 from src.shared.models.time_record import TimeRecordInput, TimeRecordResource
 from src.shared.repositories.tag_repository import SqliteTagRepository
@@ -127,9 +127,11 @@ class TimeRecordService():
                 raise ValidationError("Invalid type.")
         return self.get(time_record.guid)
 
-    def repurpose(self, data : dict):
-        TimeRecordRepurposeSchema().load(data)
 
+    def repurpose(self, data : dict):
+        current_app.logger.debug(f"[REPURPOSE:data] {data}")
+        TimeRecordRepurposeSchema().load(data)
+        current_app.logger.debug("After loading data in schema")
         if data["field"] == 'tag':
             repo = SqliteTagRepository(self.connexion)
         elif data["field"] == 'task':
@@ -140,6 +142,8 @@ class TimeRecordService():
             repo.get_id_from_guid(data["old_guid"]),
             repo.get_id_from_guid(data["new_guid"]),
         )
+        self.connexion.commit()
+        return "Done"
 
     def update_ending_to_now(self):
         self.repo.update_last_row_ending(datetime.datetime.now())
