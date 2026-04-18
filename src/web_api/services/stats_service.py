@@ -385,6 +385,14 @@ class YearStatService(BaseStatService):
         except Exception as e:
             raise Exception(e) from e
 
+class RangeStatService(BaseStatService):
+    def __init__(self, connexion : Connection, request : dict):
+        super().__init__(connexion, request)
+
+    def get_generic_stats(self):
+        print("getting a range generic stat")
+        print("request is", self.request)
+        return []
 
 class CustomStatService():
     def __init__(self, connexion : Connection, request : dict):
@@ -420,6 +428,9 @@ class CustomStatService():
 
         elif period == "year":
             labels = [str(start_date.year)] if start_date.year == end_date.year else [str(year) for year in range(start_date.year, end_date.year+1)]
+        
+        elif period == "range":
+            pass
 
         else:
             raise ValueError("Invalid period provided. Please choose from 'day', 'week', 'month', or 'year'.")
@@ -439,6 +450,8 @@ class CustomStatService():
             return MonthStatService(self.connexion, None).get_generic_stat(self.request["month"])
         if "year" in self.request:
             return YearStatService(self.connexion, self.request).get_generic_stat(str(self.request["year"]))
+        if "range" in self.request:
+            return RangeStatService(self.connexion, self.request).get_generic_stats()
         else:
             return {}
 
@@ -450,6 +463,7 @@ class CustomStatService():
         '''
         assert self.request != None
 
+        print("in custom stats with dict", self.request)
         response_object = {}
 
         keys = self.request.keys()
@@ -458,7 +472,9 @@ class CustomStatService():
             return self.get_generic_stats()
         
         if "rangeBeginning" in keys and not "stats" in keys :
-            raise KeyError("Range must have a list of stat elements to return.")
+            response_object["stats"] = StatServiceFactory().create_stat_service(self.connexion, self.request).get_generic_stat(), 200
+
+            # raise KeyError("Range must have a list of stat elements to return.")
         
         
         if "stats" in keys:
@@ -560,5 +576,7 @@ class StatServiceFactory():
             return MonthStatService(**init_attributes)
         elif "year" in haystack:
             return YearStatService(**init_attributes)
+        elif "range" in haystack:
+            return RangeStatService(**init_attributes)
         else:
             raise KeyError("No existing service for this.")
